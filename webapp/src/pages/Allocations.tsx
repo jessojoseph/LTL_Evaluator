@@ -30,6 +30,7 @@ export default function Allocations() {
         .sort((a, b) => a - b)
     : [];
   const filteredWeeks = weeks.filter((w) => {
+    if (w.isActive === false) return false;
     const d = new Date(w.startDate);
     if (selectedYear && d.getFullYear() !== Number(selectedYear)) return false;
     if (selectedMonth && d.getMonth() !== Number(selectedMonth)) return false;

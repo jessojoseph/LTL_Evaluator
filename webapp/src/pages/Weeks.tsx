@@ -49,10 +49,12 @@ export default function Weeks() {
       <div className="card overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
-            <thead><tr className="bg-gray-50 border-b border-gray-200"><th className="text-left px-4 py-3 font-medium text-gray-600">Week</th><th className="text-left px-4 py-3 font-medium text-gray-600">Start</th><th className="text-left px-4 py-3 font-medium text-gray-600">End</th><th className="text-center px-4 py-3 font-medium text-gray-600">Days</th><th className="text-center px-4 py-3 font-medium text-gray-600">Hrs/Day</th><th className="text-center px-4 py-3 font-medium text-gray-600">Capacity</th><th className="text-left px-4 py-3 font-medium text-gray-600">Status</th><th className="text-right px-4 py-3 font-medium text-gray-600">Actions</th></tr></thead>
+            <thead><tr className="bg-gray-50 border-b border-gray-200"><th className="text-left px-4 py-3 font-medium text-gray-600">Week</th><th className="text-left px-4 py-3 font-medium text-gray-600">Start</th><th className="text-left px-4 py-3 font-medium text-gray-600">End</th><th className="text-center px-4 py-3 font-medium text-gray-600">Days</th><th className="text-center px-4 py-3 font-medium text-gray-600">Hrs/Day</th><th className="text-center px-4 py-3 font-medium text-gray-600">Capacity</th><th className="text-left px-4 py-3 font-medium text-gray-600">Workflow</th><th className="text-left px-4 py-3 font-medium text-gray-600">Active</th><th className="text-right px-4 py-3 font-medium text-gray-600">Actions</th></tr></thead>
             <tbody className="divide-y divide-gray-200">
-              {weeks.map((w) => (
-                <tr key={w._id} className="hover:bg-gray-50">
+              {weeks.map((w) => {
+                const isInactive = w.isActive === false;
+                return (
+                <tr key={w._id} className={`hover:bg-gray-50 ${isInactive ? 'opacity-60' : ''}`}>
                   <td className="px-4 py-3 font-medium text-gray-900">{w.weekName}</td>
                   <td className="px-4 py-3 text-gray-600">{new Date(w.startDate).toLocaleDateString()}</td>
                   <td className="px-4 py-3 text-gray-600">{new Date(w.endDate).toLocaleDateString()}</td>
@@ -60,6 +62,11 @@ export default function Weeks() {
                   <td className="px-4 py-3 text-center text-gray-600">{w.hoursPerDay}</td>
                   <td className="px-4 py-3 text-center font-medium">{w.weeklyCapacity} WH</td>
                   <td className="px-4 py-3"><span className={`badge ${statusColors[w.status]}`}>{w.status}</span></td>
+                  <td className="px-4 py-3">
+                    <span className={`badge ${isInactive ? 'bg-red-50 text-red-700' : 'bg-green-50 text-green-700'}`}>
+                      {isInactive ? 'Inactive' : 'Active'}
+                    </span>
+                  </td>
                   <td className="px-4 py-3 text-right">
                     <div className="flex items-center justify-end gap-2">
                       {hasPermission('weeks:update') && <button onClick={() => openEdit(w)} className="p-1.5 text-gray-400 hover:text-primary-600 rounded-lg hover:bg-gray-100"><Pencil className="w-4 h-4" /></button>}
@@ -78,8 +85,9 @@ export default function Weeks() {
                     </div>
                   </td>
                 </tr>
-              ))}
-              {weeks.length === 0 && <tr><td colSpan={8} className="text-center py-12 text-gray-400">No weeks created yet</td></tr>}
+              );
+              })}
+              {weeks.length === 0 && <tr><td colSpan={9} className="text-center py-12 text-gray-400">No weeks created yet</td></tr>}
             </tbody>
           </table>
         </div>
@@ -93,7 +101,10 @@ export default function Weeks() {
             <p className="text-sm text-gray-600 mb-4">Select a source week to copy allocations from:</p>
             <select className="input mb-4" value="" onChange={(e) => handleCopy(copyTarget)}>
               <option value="">Select source week...</option>
-              {weeks.filter((w) => w._id !== copyTarget).map((w) => <option key={w._id} value={w._id}>{w.weekName}</option>)}
+              {weeks.filter((w) => w._id !== copyTarget).map((w) => {
+                const isInactive = w.isActive === false;
+                return <option key={w._id} value={w._id}>{w.weekName}{isInactive ? ' (Inactive)' : ''}</option>;
+              })}
             </select>
             <button onClick={() => setCopyTarget(null)} className="btn-secondary w-full">Cancel</button>
           </div>

@@ -137,18 +137,30 @@ export default function Reports() {
             <option value="">Select week...</option>
             {filteredWeeks.map((w) => {
               const d = new Date(w.startDate);
-              return <option key={w._id} value={w._id}>{w.weekName} — {d.toLocaleDateString()}</option>;
+              const isInactive = w.isActive === false;
+              return <option key={w._id} value={w._id} className={isInactive ? 'text-red-600' : ''}>
+                {w.weekName} — {d.toLocaleDateString()}{isInactive ? ' ⛔ Inactive' : ''}
+              </option>;
             })}
           </select>
         </div>
       ) : (
         <div className="flex flex-wrap gap-2">
-          {weeks.map((w) => (
-            <button key={w._id} onClick={() => toggleWeek(w._id)}
-              className={`px-3 py-1.5 rounded-lg text-sm border transition-colors ${selectedWeeks.includes(w._id) ? 'bg-primary-50 border-primary-300 text-primary-700' : 'bg-white border-gray-200 text-gray-600 hover:bg-gray-50'}`}>
-              {w.weekName}
-            </button>
-          ))}
+          {weeks.map((w) => {
+            const isInactive = w.isActive === false;
+            return (
+              <button key={w._id} onClick={() => toggleWeek(w._id)}
+                className={`px-3 py-1.5 rounded-lg text-sm border transition-colors ${
+                  selectedWeeks.includes(w._id)
+                    ? isInactive ? 'bg-red-50 border-red-300 text-red-700'
+                      : 'bg-primary-50 border-primary-300 text-primary-700'
+                    : isInactive ? 'bg-white border-red-200 text-red-500 hover:bg-red-50'
+                      : 'bg-white border-gray-200 text-gray-600 hover:bg-gray-50'
+                }`}>
+                {w.weekName}{isInactive ? ' (Inactive)' : ''}
+              </button>
+            );
+          })}
         </div>
       )}
 

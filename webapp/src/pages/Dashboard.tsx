@@ -86,7 +86,10 @@ export default function Dashboard() {
             <option value="">Select week...</option>
             {filteredWeeks.map((w) => {
               const d = new Date(w.startDate);
-              return <option key={w._id} value={w._id}>{w.weekName} — {d.toLocaleDateString()}</option>;
+              const isInactive = w.isActive === false;
+              return <option key={w._id} value={w._id} className={isInactive ? 'text-red-600' : ''}>
+                {w.weekName} — {d.toLocaleDateString()}{isInactive ? ' ⛔ Inactive' : ''}
+              </option>;
             })}
           </select>
         </div>
