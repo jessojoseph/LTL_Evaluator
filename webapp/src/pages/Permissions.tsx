@@ -21,24 +21,14 @@ export default function Permissions() {
   const load = () => { permissionApi.getAll().then(({ data }) => setPermissions(data.permissions)); };
   useEffect(() => { load(); }, []);
 
-  const openCreate = () => {
-    setEditing(null);
-    setForm({ name: '', label: '', description: '', module: 'Employees', status: 'active' });
-    setShowModal(true);
-  };
-
-  const openEdit = (p: Permission) => {
-    setEditing(p);
-    setForm({ name: p.name, label: p.label, description: p.description || '', module: p.module, status: p.status });
-    setShowModal(true);
-  };
+  const openCreate = () => { setEditing(null); setForm({ name: '', label: '', description: '', module: 'Employees', status: 'active' }); setShowModal(true); };
+  const openEdit = (p: Permission) => { setEditing(p); setForm({ name: p.name, label: p.label, description: p.description || '', module: p.module, status: p.status }); setShowModal(true); };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (editing) await permissionApi.update(editing._id, form);
     else await permissionApi.create(form);
-    setShowModal(false);
-    load();
+    setShowModal(false); load();
   };
 
   const toggleStatus = async (id: string) => {
@@ -59,11 +49,16 @@ export default function Permissions() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 animate-fade-in">
       <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Permissions</h1>
-          <p className="text-gray-500 mt-1">Manage system permissions organized by module</p>
+        <div className="flex items-center gap-3">
+          <div className="p-2.5 gradient-primary rounded-xl shadow-sm">
+            <Key className="w-5 h-5 text-white" />
+          </div>
+          <div>
+            <h1 className="text-xl font-bold text-gray-900">Permissions</h1>
+            <p className="text-sm text-gray-500 mt-0.5">Manage system permissions organized by module</p>
+          </div>
         </div>
         {hasPermission('permissions:create') && (
           <button onClick={openCreate} className="btn-primary"><Plus className="w-4 h-4" /> Add Permission</button>
@@ -72,10 +67,10 @@ export default function Permissions() {
 
       <div className="flex items-center gap-3 flex-wrap">
         <div className="relative flex-1 max-w-sm">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-          <input className="input pl-9" placeholder="Search permissions..." value={search} onChange={(e) => setSearch(e.target.value)} />
+          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+          <input className="input pl-10" placeholder="Search permissions..." value={search} onChange={(e) => setSearch(e.target.value)} />
         </div>
-        <select className="input w-auto" value={filterModule} onChange={(e) => setFilterModule(e.target.value)}>
+        <select className="input w-auto text-sm" value={filterModule} onChange={(e) => setFilterModule(e.target.value)}>
           <option value="">All Modules</option>
           {modules.map((m) => <option key={m} value={m}>{m}</option>)}
         </select>
@@ -83,38 +78,34 @@ export default function Permissions() {
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {filtered.map((perm) => (
-          <div key={perm._id} className={`card p-4 ${perm.status === 'inactive' ? 'opacity-60' : ''}`}>
+          <div key={perm._id} className={`card-hover p-4 ${perm.status === 'inactive' ? 'opacity-60' : ''}`}>
             <div className="flex items-start justify-between gap-3">
               <div className="flex items-start gap-3 min-w-0">
-                <div className="w-8 h-8 bg-indigo-100 rounded-lg flex items-center justify-center flex-shrink-0">
-                  <Key className="w-4 h-4 text-indigo-600" />
+                <div className="w-8 h-8 bg-primary-50 rounded-xl flex items-center justify-center flex-shrink-0">
+                  <Key className="w-4 h-4 text-primary-600" />
                 </div>
                 <div className="min-w-0">
-                  <p className="font-medium text-sm text-gray-900">{perm.label}</p>
-                  <p className="text-xs text-gray-500 mt-0.5">{perm.name}</p>
+                  <p className="font-semibold text-sm text-gray-900">{perm.label}</p>
+                  <p className="text-xs text-gray-500 mt-0.5 font-mono">{perm.name}</p>
                   <p className="text-xs text-gray-400 mt-1">{perm.description}</p>
                   <div className="flex flex-wrap items-center gap-1 mt-2">
                     <span className="badge bg-gray-100 text-gray-600 text-[10px]">{perm.module}</span>
                     {perm.isSystem && <span className="badge bg-purple-50 text-purple-700 text-[10px]">System</span>}
-                    <span className={`badge text-[10px] ${perm.status === 'active' ? 'bg-green-50 text-green-700' : 'bg-gray-100 text-gray-500'}`}>{perm.status}</span>
+                    <span className={`badge text-[10px] ${perm.status === 'active' ? 'bg-emerald-50 text-emerald-700' : 'bg-gray-100 text-gray-500'}`}>{perm.status}</span>
                   </div>
                 </div>
               </div>
               <div className="flex items-center gap-1 flex-shrink-0">
                 {hasPermission('permissions:update') && !perm.isSystem && (
-                  <button onClick={() => openEdit(perm)} className="p-1.5 text-gray-400 hover:text-primary-600 rounded-lg hover:bg-gray-100">
-                    <Pencil className="w-3.5 h-3.5" />
-                  </button>
+                  <button onClick={() => openEdit(perm)} className="p-1.5 text-gray-400 hover:text-primary-600 rounded-lg hover:bg-primary-50 transition-all"><Pencil className="w-3.5 h-3.5" /></button>
                 )}
                 {hasPermission('permissions:update') && (
-                  <button
-                    onClick={() => toggleStatus(perm._id)}
-                    className={`p-1.5 rounded-lg hover:bg-gray-100 ${
-                      perm.status === 'active' ? 'text-gray-400 hover:text-red-600' : 'text-gray-400 hover:text-green-600'
+                  <button onClick={() => toggleStatus(perm._id)}
+                    className={`p-1.5 rounded-lg transition-all ${
+                      perm.status === 'active' ? 'text-gray-400 hover:text-red-600 hover:bg-red-50' : 'text-gray-400 hover:text-green-600 hover:bg-green-50'
                     }`}
                     title={perm.status === 'active' ? 'Deactivate' : 'Activate'}
-                    disabled={perm.isSystem && perm.status === 'active'}
-                  >
+                    disabled={perm.isSystem && perm.status === 'active'}>
                     {perm.status === 'active' ? <PowerOff className="w-3.5 h-3.5" /> : <Power className="w-3.5 h-3.5" />}
                   </button>
                 )}
@@ -129,11 +120,11 @@ export default function Permissions() {
       )}
 
       {showModal && (
-        <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4" onClick={() => setShowModal(false)}>
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg p-6" onClick={(e) => e.stopPropagation()}>
+        <div className="modal-overlay" onClick={() => setShowModal(false)}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between mb-6">
-              <h2 className="text-lg font-semibold">{editing ? 'Edit Permission' : 'Add Permission'}</h2>
-              <button onClick={() => setShowModal(false)} className="p-1 text-gray-400 hover:text-gray-600"><X className="w-5 h-5" /></button>
+              <h2 className="text-lg font-semibold text-gray-900">{editing ? 'Edit Permission' : 'Add Permission'}</h2>
+              <button onClick={() => setShowModal(false)} className="p-1.5 text-gray-400 hover:text-gray-600 rounded-lg hover:bg-gray-100 transition-colors"><X className="w-5 h-5" /></button>
             </div>
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="grid grid-cols-2 gap-4">

@@ -1,7 +1,7 @@
 import { useState, FormEvent } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { FileSpreadsheet, Eye, EyeOff } from 'lucide-react';
+import { BarChart3, Eye, EyeOff } from 'lucide-react';
 
 export default function Login() {
   const { login } = useAuth();
@@ -31,19 +31,21 @@ export default function Login() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-primary-50 via-white to-primary-50 flex items-center justify-center p-4">
-      <div className="w-full max-w-md">
+    <div className="min-h-screen gradient-subtle flex items-center justify-center p-4">
+      <div className="w-full max-w-md animate-slide-up">
+        {/* Brand */}
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-16 h-16 bg-primary-600 rounded-2xl mb-4">
-            <FileSpreadsheet className="w-8 h-8 text-white" />
+          <div className="inline-flex items-center justify-center w-16 h-16 gradient-primary rounded-2xl shadow-lg mb-4">
+            <BarChart3 className="w-8 h-8 text-white" />
           </div>
           <h1 className="text-2xl font-bold text-gray-900">Resource Planning</h1>
           <p className="text-gray-500 mt-1">Sign in to your account</p>
         </div>
 
-        <form onSubmit={handleSubmit} className="bg-white rounded-2xl shadow-sm border border-gray-200 p-8 space-y-5">
+        {/* Form */}
+        <form onSubmit={handleSubmit} className="bg-white rounded-2xl shadow-lg border border-gray-100 p-8 space-y-5">
           {error && (
-            <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg px-4 py-3">
+            <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-xl px-4 py-3 animate-slide-down">
               {error}
             </div>
           )}
@@ -68,7 +70,7 @@ export default function Login() {
               <input
                 id="password"
                 type={showPassword ? 'text' : 'password'}
-                className="input pr-10"
+                className="input pr-11"
                 placeholder="Enter your password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
@@ -76,7 +78,7 @@ export default function Login() {
               />
               <button
                 type="button"
-                className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600"
+                className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-gray-400 hover:text-gray-600 transition-colors"
                 onClick={() => setShowPassword(!showPassword)}
               >
                 {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
@@ -84,7 +86,7 @@ export default function Login() {
             </div>
           </div>
 
-          <button type="submit" disabled={loading} className="btn-primary w-full py-2.5">
+          <button type="submit" disabled={loading} className="btn-primary w-full py-3">
             {loading ? (
               <span className="flex items-center gap-2">
                 <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white" />
@@ -94,6 +96,10 @@ export default function Login() {
               'Sign in'
             )}
           </button>
+
+          <p className="text-center text-xs text-gray-400 mt-4">
+            Resource Planning Management System
+          </p>
         </form>
       </div>
     </div>

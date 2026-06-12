@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { allocationApi, weekApi, employeeApi, projectApi } from '../api/client';
 import { useAuth } from '../context/AuthContext';
 import type { Allocation, Week, Employee, Project } from '../types';
-import { Plus, Pencil, AlertTriangle, X, Power, PowerOff } from 'lucide-react';
+import { Plus, Pencil, AlertTriangle, X, Power, PowerOff, FileSpreadsheet } from 'lucide-react';
 
 const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 
@@ -21,7 +21,6 @@ export default function Allocations() {
   const [warning, setWarning] = useState('');
   const [form, setForm] = useState({ weekId: '', projectLeadId: '', projectId: '', employeeId: '', allocatedDays: '0', extraHours: '0', remarks: '' });
 
-  // Derive available years and months from loaded weeks
   const years = [...new Set(weeks.map((w) => new Date(w.startDate).getFullYear()))].sort((a, b) => b - a);
   const monthsInYear = selectedYear
     ? [...new Set(weeks
@@ -37,7 +36,6 @@ export default function Allocations() {
     return true;
   });
 
-  // Auto-select first year/month/week when data loads
   useEffect(() => {
     if (weeks.length > 0) {
       if (!selectedYear) {
@@ -117,20 +115,32 @@ export default function Allocations() {
   const week = weeks.find((w) => w._id === selectedWeek);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 animate-fade-in">
+      {/* Header */}
       <div className="flex items-center justify-between flex-wrap gap-4">
-        <div><h1 className="text-2xl font-bold text-gray-900">Allocations</h1><p className="text-gray-500 mt-1">Manage weekly resource allocations</p></div>
+        <div className="flex items-center gap-3">
+          <div className="p-2.5 gradient-primary rounded-xl shadow-sm">
+            <FileSpreadsheet className="w-5 h-5 text-white" />
+          </div>
+          <div>
+            <h1 className="text-xl font-bold text-gray-900">Allocations</h1>
+            <p className="text-sm text-gray-500 mt-0.5">Manage weekly resource allocations</p>
+          </div>
+        </div>
         <div className="flex items-center gap-3">
           <div className="flex items-center gap-2">
-            <select className="input w-auto" value={selectedYear} onChange={(e) => { setSelectedYear(e.target.value); setSelectedMonth(''); setSelectedWeek(''); }}>
+            <select className="input w-auto text-sm" value={selectedYear}
+              onChange={(e) => { setSelectedYear(e.target.value); setSelectedMonth(''); setSelectedWeek(''); }}>
               <option value="">All Years</option>
               {years.map((y) => <option key={y} value={y}>{y}</option>)}
             </select>
-            <select className="input w-auto" value={selectedMonth} onChange={(e) => { setSelectedMonth(e.target.value); setSelectedWeek(''); }}>
+            <select className="input w-auto text-sm" value={selectedMonth}
+              onChange={(e) => { setSelectedMonth(e.target.value); setSelectedWeek(''); }}>
               <option value="">All Months</option>
               {monthsInYear.map((m) => <option key={m} value={m}>{MONTHS[m]}</option>)}
             </select>
-            <select className="input w-auto min-w-[180px]" value={selectedWeek} onChange={(e) => setSelectedWeek(e.target.value)}>
+            <select className="input w-auto text-sm min-w-[180px]" value={selectedWeek}
+              onChange={(e) => setSelectedWeek(e.target.value)}>
               <option value="">Select week...</option>
               {filteredWeeks.map((w) => {
                 const d = new Date(w.startDate);
@@ -145,7 +155,7 @@ export default function Allocations() {
       </div>
 
       {warning && (
-        <div className="flex items-center gap-2 bg-yellow-50 border border-yellow-200 text-yellow-800 text-sm rounded-lg px-4 py-3">
+        <div className="flex items-center gap-2 bg-yellow-50 border border-yellow-200 text-yellow-800 text-sm rounded-xl px-4 py-3 animate-slide-down">
           <AlertTriangle className="w-4 h-4 flex-shrink-0" />
           {warning}
         </div>
@@ -153,36 +163,40 @@ export default function Allocations() {
 
       <div className="card overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead><tr className="bg-gray-50 border-b border-gray-200">
-              <th className="text-left px-4 py-3 font-medium text-gray-600">Lead</th>
-              <th className="text-left px-4 py-3 font-medium text-gray-600">Project</th>
-              <th className="text-left px-4 py-3 font-medium text-gray-600">Employee</th>
-              <th className="text-center px-4 py-3 font-medium text-gray-600">Days</th>
-              <th className="text-center px-4 py-3 font-medium text-gray-600">Extra Hrs</th>
-              <th className="text-center px-4 py-3 font-medium text-gray-600">WH</th>
-              <th className="text-right px-4 py-3 font-medium text-gray-600">Actions</th>
-            </tr></thead>
-            <tbody className="divide-y divide-gray-200">
+          <table className="table-modern">
+            <thead>
+              <tr className="bg-gray-50/80 border-b border-gray-100">
+                <th className="text-left px-4 py-3.5 text-xs font-semibold text-gray-500 uppercase tracking-wider">Lead</th>
+                <th className="text-left px-4 py-3.5 text-xs font-semibold text-gray-500 uppercase tracking-wider">Project</th>
+                <th className="text-left px-4 py-3.5 text-xs font-semibold text-gray-500 uppercase tracking-wider">Employee</th>
+                <th className="text-center px-4 py-3.5 text-xs font-semibold text-gray-500 uppercase tracking-wider">Days</th>
+                <th className="text-center px-4 py-3.5 text-xs font-semibold text-gray-500 uppercase tracking-wider">Extra Hrs</th>
+                <th className="text-center px-4 py-3.5 text-xs font-semibold text-gray-500 uppercase tracking-wider">WH</th>
+                <th className="text-right px-4 py-3.5 text-xs font-semibold text-gray-500 uppercase tracking-wider">Actions</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-100">
               {allocations.map((a) => (
-                <tr key={a._id} className="hover:bg-gray-50">
-                  <td className="px-4 py-3 text-gray-900">{a.projectLeadId?.name}</td>
-                  <td className="px-4 py-3 text-gray-900">{a.projectId?.name}</td>
-                  <td className="px-4 py-3 text-gray-900">{a.employeeId?.name}</td>
-                  <td className="px-4 py-3 text-center text-gray-600">{a.allocatedDays}</td>
-                  <td className="px-4 py-3 text-center text-gray-600">{a.extraHours}</td>
-                  <td className="px-4 py-3 text-center font-medium">{a.allocatedWH}</td>
-                  <td className="px-4 py-3 text-right">
-                    <div className="flex items-center justify-end gap-2">
-                      {hasPermission('allocations:update') && <button onClick={() => openEdit(a)} className="p-1.5 text-gray-400 hover:text-primary-600 rounded-lg hover:bg-gray-100"><Pencil className="w-4 h-4" /></button>}
+                <tr key={a._id} className="hover:bg-primary-50/40 transition-colors duration-150">
+                  <td className="text-gray-900 font-medium">{a.projectLeadId?.name}</td>
+                  <td className="text-gray-900">{a.projectId?.name}</td>
+                  <td className="text-gray-900">{a.employeeId?.name}</td>
+                  <td className="text-center text-gray-600">{a.allocatedDays}</td>
+                  <td className="text-center text-gray-600">{a.extraHours}</td>
+                  <td className="text-center font-semibold text-primary-700">{a.allocatedWH}</td>
+                  <td className="text-right">
+                    <div className="flex items-center justify-end gap-1">
                       {hasPermission('allocations:update') && (
-                        <button
-                          onClick={() => toggleStatus(a._id)}
-                          className={`p-1.5 rounded-lg hover:bg-gray-100 ${
-                            a.status === 'active' ? 'text-gray-400 hover:text-red-600' : 'text-gray-400 hover:text-green-600'
+                        <button onClick={() => openEdit(a)} className="p-2 text-gray-400 hover:text-primary-600 rounded-xl hover:bg-primary-50 transition-all duration-200">
+                          <Pencil className="w-4 h-4" />
+                        </button>
+                      )}
+                      {hasPermission('allocations:update') && (
+                        <button onClick={() => toggleStatus(a._id)}
+                          className={`p-2 rounded-xl transition-all duration-200 ${
+                            a.status === 'active' ? 'text-gray-400 hover:text-red-600 hover:bg-red-50' : 'text-gray-400 hover:text-green-600 hover:bg-green-50'
                           }`}
-                          title={a.status === 'active' ? 'Deactivate' : 'Activate'}
-                        >
+                          title={a.status === 'active' ? 'Deactivate' : 'Activate'}>
                           {a.status === 'active' ? <PowerOff className="w-4 h-4" /> : <Power className="w-4 h-4" />}
                         </button>
                       )}
@@ -190,47 +204,76 @@ export default function Allocations() {
                   </td>
                 </tr>
               ))}
-              {allocations.length === 0 && <tr><td colSpan={7} className="text-center py-12 text-gray-400">{selectedWeek ? 'No allocations for this week' : 'Select a week to view allocations'}</td></tr>}
+              {allocations.length === 0 && (
+                <tr><td colSpan={7} className="text-center py-12 text-gray-400">{selectedWeek ? 'No allocations for this week' : 'Select a week to view allocations'}</td></tr>
+              )}
             </tbody>
           </table>
         </div>
       </div>
 
       {week && (
-        <div className="card p-4 text-sm text-gray-600">
-          <p><strong>Week Capacity:</strong> {week.weeklyCapacity} WH ({week.workingDays} days × {week.hoursPerDay} hrs)</p>
-          <p><strong>Total Allocated:</strong> {allocations.reduce((s, a) => s + a.allocatedWH, 0)} WH</p>
+        <div className="card p-4 text-sm">
+          <div className="flex items-center gap-6 flex-wrap">
+            <span className="text-gray-600">
+              <span className="font-semibold text-gray-900">Week Capacity:</span> {week.weeklyCapacity} WH
+              <span className="text-gray-400 ml-1">({week.workingDays} days × {week.hoursPerDay} hrs)</span>
+            </span>
+            <span className="text-gray-600">
+              <span className="font-semibold text-gray-900">Total Allocated:</span>{' '}
+              <span className="text-primary-700 font-semibold">{allocations.reduce((s, a) => s + a.allocatedWH, 0)} WH</span>
+            </span>
+          </div>
         </div>
       )}
 
+      {/* Modal */}
       {showModal && (
-        <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4" onClick={() => setShowModal(false)}>
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg p-6" onClick={(e) => e.stopPropagation()}>
-            <div className="flex items-center justify-between mb-6"><h2 className="text-lg font-semibold">{editing ? 'Edit Allocation' : 'Add Allocation'}</h2><button onClick={() => setShowModal(false)} className="p-1 text-gray-400 hover:text-gray-600"><X /></button></div>
+        <div className="modal-overlay" onClick={() => setShowModal(false)}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-lg font-semibold text-gray-900">{editing ? 'Edit Allocation' : 'Add Allocation'}</h2>
+              <button onClick={() => setShowModal(false)} className="p-1.5 text-gray-400 hover:text-gray-600 rounded-lg hover:bg-gray-100 transition-colors"><X className="w-5 h-5" /></button>
+            </div>
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
-                <div className="col-span-2"><label className="label">Project Lead</label>
+                <div className="col-span-2">
+                  <label className="label">Project Lead</label>
                   <select className="input" value={form.projectLeadId} onChange={(e) => setForm({ ...form, projectLeadId: e.target.value, projectId: '' })} required>
-                    <option value="">Select lead</option>{leads.map((l) => <option key={l._id} value={l._id}>{l.name}</option>)}
+                    <option value="">Select lead</option>
+                    {leads.map((l) => <option key={l._id} value={l._id}>{l.name}</option>)}
                   </select>
                 </div>
-                <div className="col-span-2"><label className="label">Project</label>
+                <div className="col-span-2">
+                  <label className="label">Project</label>
                   <select className="input" value={form.projectId} onChange={(e) => setForm({ ...form, projectId: e.target.value })} required>
-                    <option value="">Select project</option>{filteredProjects.map((p) => <option key={p._id} value={p._id}>{p.name}</option>)}
+                    <option value="">Select project</option>
+                    {filteredProjects.map((p) => <option key={p._id} value={p._id}>{p.name}</option>)}
                   </select>
                 </div>
-                <div className="col-span-2"><label className="label">Employee</label>
+                <div className="col-span-2">
+                  <label className="label">Employee</label>
                   <select className="input" value={form.employeeId} onChange={(e) => setForm({ ...form, employeeId: e.target.value })} required>
-                    <option value="">Select employee</option>{employees.map((emp) => <option key={emp._id} value={emp._id}>{emp.name}</option>)}
+                    <option value="">Select employee</option>
+                    {employees.map((emp) => <option key={emp._id} value={emp._id}>{emp.name}</option>)}
                   </select>
                 </div>
-                <div><label className="label">Days</label><input type="number" className="input" value={form.allocatedDays} onChange={(e) => setForm({ ...form, allocatedDays: e.target.value })} min="0" step="0.5" required /></div>
-                <div><label className="label">Extra Hours</label><input type="number" className="input" value={form.extraHours} onChange={(e) => setForm({ ...form, extraHours: e.target.value })} min="0" step="0.5" /></div>
-                <div className="col-span-2"><label className="label">Remarks</label><textarea className="input" value={form.remarks} onChange={(e) => setForm({ ...form, remarks: e.target.value })} rows={2} /></div>
+                <div>
+                  <label className="label">Days</label>
+                  <input type="number" className="input" value={form.allocatedDays} onChange={(e) => setForm({ ...form, allocatedDays: e.target.value })} min="0" step="0.5" required />
+                </div>
+                <div>
+                  <label className="label">Extra Hours</label>
+                  <input type="number" className="input" value={form.extraHours} onChange={(e) => setForm({ ...form, extraHours: e.target.value })} min="0" step="0.5" />
+                </div>
+                <div className="col-span-2">
+                  <label className="label">Remarks</label>
+                  <textarea className="input" value={form.remarks} onChange={(e) => setForm({ ...form, remarks: e.target.value })} rows={2} />
+                </div>
               </div>
               {week && (
-                <p className="text-xs text-gray-500">
-                  Calculated WH: {Number(form.allocatedDays) * week.hoursPerDay + Number(form.extraHours)}
+                <p className="text-xs text-gray-500 bg-gray-50 rounded-lg px-3 py-2">
+                  Calculated WH: <span className="font-semibold text-primary-700">{Number(form.allocatedDays) * week.hoursPerDay + Number(form.extraHours)}</span>
                 </p>
               )}
               <div className="flex justify-end gap-3 pt-2">
@@ -244,5 +287,3 @@ export default function Allocations() {
     </div>
   );
 }
-
-

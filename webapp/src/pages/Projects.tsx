@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { projectApi, employeeApi } from '../api/client';
 import { useAuth } from '../context/AuthContext';
 import type { Project, Employee } from '../types';
-import { Plus, Pencil, Search, X, Power, PowerOff } from 'lucide-react';
+import { Plus, Pencil, Search, X, Power, PowerOff, FolderKanban } from 'lucide-react';
 
 export default function Projects() {
   const { hasPermission } = useAuth();
@@ -34,40 +34,56 @@ export default function Projects() {
     load();
   };
 
-  const statusColors: Record<string, string> = { active: 'bg-green-50 text-green-700', on_hold: 'bg-yellow-50 text-yellow-700', completed: 'bg-blue-50 text-blue-700', no_work: 'bg-gray-100 text-gray-600' };
+  const statusColors: Record<string, string> = { active: 'bg-emerald-50 text-emerald-700', on_hold: 'bg-yellow-50 text-yellow-700', completed: 'bg-blue-50 text-blue-700', no_work: 'bg-gray-100 text-gray-600' };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 animate-fade-in">
       <div className="flex items-center justify-between">
-        <div><h1 className="text-2xl font-bold text-gray-900">Projects</h1><p className="text-gray-500 mt-1">Manage projects</p></div>
+        <div className="flex items-center gap-3">
+          <div className="p-2.5 gradient-primary rounded-xl shadow-sm">
+            <FolderKanban className="w-5 h-5 text-white" />
+          </div>
+          <div>
+            <h1 className="text-xl font-bold text-gray-900">Projects</h1>
+            <p className="text-sm text-gray-500 mt-0.5">Manage projects</p>
+          </div>
+        </div>
         {hasPermission('projects:create') && <button onClick={openCreate} className="btn-primary"><Plus className="w-4 h-4" /> Add Project</button>}
       </div>
-      <div className="relative flex-1 max-w-sm"><Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" /><input className="input pl-9" placeholder="Search projects..." value={search} onChange={(e) => setSearch(e.target.value)} /></div>
+      <div className="relative flex-1 max-w-sm">
+        <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+        <input className="input pl-10" placeholder="Search projects..." value={search} onChange={(e) => setSearch(e.target.value)} />
+      </div>
 
       <div className="card overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead><tr className="bg-gray-50 border-b border-gray-200"><th className="text-left px-4 py-3 font-medium text-gray-600">Name</th><th className="text-left px-4 py-3 font-medium text-gray-600">Lead</th><th className="text-left px-4 py-3 font-medium text-gray-600">Client</th><th className="text-left px-4 py-3 font-medium text-gray-600">Type</th><th className="text-left px-4 py-3 font-medium text-gray-600">Priority</th><th className="text-left px-4 py-3 font-medium text-gray-600">Status</th><th className="text-right px-4 py-3 font-medium text-gray-600">Actions</th></tr></thead>
-            <tbody className="divide-y divide-gray-200">
+          <table className="table-modern">
+            <thead><tr className="bg-gray-50/80 border-b border-gray-100">
+              <th className="text-left px-4 py-3.5 text-xs font-semibold text-gray-500 uppercase tracking-wider">Name</th>
+              <th className="text-left px-4 py-3.5 text-xs font-semibold text-gray-500 uppercase tracking-wider">Lead</th>
+              <th className="text-left px-4 py-3.5 text-xs font-semibold text-gray-500 uppercase tracking-wider">Client</th>
+              <th className="text-left px-4 py-3.5 text-xs font-semibold text-gray-500 uppercase tracking-wider">Type</th>
+              <th className="text-left px-4 py-3.5 text-xs font-semibold text-gray-500 uppercase tracking-wider">Priority</th>
+              <th className="text-left px-4 py-3.5 text-xs font-semibold text-gray-500 uppercase tracking-wider">Status</th>
+              <th className="text-right px-4 py-3.5 text-xs font-semibold text-gray-500 uppercase tracking-wider">Actions</th>
+            </tr></thead>
+            <tbody className="divide-y divide-gray-100">
               {projects.map((p) => (
-                <tr key={p._id} className="hover:bg-gray-50">
-                  <td className="px-4 py-3 font-medium text-gray-900">{p.name}</td>
-                  <td className="px-4 py-3 text-gray-600">{p.projectLeadId?.name || '-'}</td>
-                  <td className="px-4 py-3 text-gray-600">{p.clientName || '-'}</td>
-                  <td className="px-4 py-3 text-gray-600">{p.projectType || '-'}</td>
-                  <td className="px-4 py-3"><span className={`badge ${p.priority === 'high' ? 'bg-red-50 text-red-700' : p.priority === 'medium' ? 'bg-yellow-50 text-yellow-700' : 'bg-gray-100 text-gray-600'}`}>{p.priority || '-'}</span></td>
-                  <td className="px-4 py-3"><span className={`badge ${statusColors[p.status] || 'bg-gray-100 text-gray-600'}`}>{p.status}</span></td>
-                  <td className="px-4 py-3 text-right">
-                    <div className="flex items-center justify-end gap-2">
-                      {hasPermission('projects:update') && <button onClick={() => openEdit(p)} className="p-1.5 text-gray-400 hover:text-primary-600 rounded-lg hover:bg-gray-100"><Pencil className="w-4 h-4" /></button>}
+                <tr key={p._id} className="hover:bg-primary-50/40 transition-colors duration-150">
+                  <td className="font-semibold text-gray-900">{p.name}</td>
+                  <td className="text-gray-600">{p.projectLeadId?.name || '-'}</td>
+                  <td className="text-gray-600">{p.clientName || '-'}</td>
+                  <td className="text-gray-600">{p.projectType || '-'}</td>
+                  <td><span className={`badge ${p.priority === 'high' ? 'bg-red-50 text-red-700' : p.priority === 'medium' ? 'bg-yellow-50 text-yellow-700' : 'bg-gray-100 text-gray-600'}`}>{p.priority || '-'}</span></td>
+                  <td><span className={`badge ${statusColors[p.status] || 'bg-gray-100 text-gray-600'}`}>{p.status}</span></td>
+                  <td className="text-right">
+                    <div className="flex items-center justify-end gap-1">
+                      {hasPermission('projects:update') && <button onClick={() => openEdit(p)} className="p-2 text-gray-400 hover:text-primary-600 rounded-xl hover:bg-primary-50 transition-all"><Pencil className="w-4 h-4" /></button>}
                       {hasPermission('projects:update') && (
-                        <button
-                          onClick={() => toggleStatus(p._id)}
-                          className={`p-1.5 rounded-lg hover:bg-gray-100 ${
-                            p.status === 'active' ? 'text-gray-400 hover:text-red-600' : 'text-gray-400 hover:text-green-600'
-                          }`}
-                          title={p.isActive !== false ? 'Deactivate' : 'Activate'}
-                        >
+                        <button onClick={() => toggleStatus(p._id)}
+                          className={`p-2 rounded-xl transition-all ${
+                            p.status === 'active' ? 'text-gray-400 hover:text-red-600 hover:bg-red-50' : 'text-gray-400 hover:text-green-600 hover:bg-green-50'
+                          }`} title={p.isActive !== false ? 'Deactivate' : 'Activate'}>
                           {p.isActive !== false ? <PowerOff className="w-4 h-4" /> : <Power className="w-4 h-4" />}
                         </button>
                       )}
@@ -82,9 +98,9 @@ export default function Projects() {
       </div>
 
       {showModal && (
-        <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4" onClick={() => setShowModal(false)}>
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg p-6" onClick={(e) => e.stopPropagation()}>
-            <div className="flex items-center justify-between mb-6"><h2 className="text-lg font-semibold">{editing ? 'Edit Project' : 'Add Project'}</h2><button onClick={() => setShowModal(false)} className="p-1 text-gray-400 hover:text-gray-600"><X className="w-5 h-5" /></button></div>
+        <div className="modal-overlay" onClick={() => setShowModal(false)}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-6"><h2 className="text-lg font-semibold">{editing ? 'Edit Project' : 'Add Project'}</h2><button onClick={() => setShowModal(false)} className="p-1.5 text-gray-400 hover:text-gray-600 rounded-lg hover:bg-gray-100 transition-colors"><X className="w-5 h-5" /></button></div>
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div className="col-span-2"><label className="label">Name</label><input className="input" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required /></div>

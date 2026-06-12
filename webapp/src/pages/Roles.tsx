@@ -50,43 +50,46 @@ export default function Roles() {
   }, {} as Record<string, Permission[]>);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 animate-fade-in">
       <div className="flex items-center justify-between">
-        <div><h1 className="text-2xl font-bold text-gray-900">Roles</h1><p className="text-gray-500 mt-1">Manage roles and their permissions</p></div>
+        <div className="flex items-center gap-3">
+          <div className="p-2.5 gradient-primary rounded-xl shadow-sm">
+            <Shield className="w-5 h-5 text-white" />
+          </div>
+          <div>
+            <h1 className="text-xl font-bold text-gray-900">Roles</h1>
+            <p className="text-sm text-gray-500 mt-0.5">Manage roles and their permissions</p>
+          </div>
+        </div>
         {hasPermission('roles:create') && <button onClick={openCreate} className="btn-primary"><Plus className="w-4 h-4" /> Add Role</button>}
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {roles.map((role) => (
-          <div key={role._id} className="card p-5">
+          <div key={role._id} className="card-hover p-5">
             <div className="flex items-start justify-between mb-3">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-primary-100 rounded-lg flex items-center justify-center">
-                  <Shield className="w-5 h-5 text-primary-700" />
+                <div className="w-10 h-10 gradient-primary rounded-xl flex items-center justify-center shadow-sm">
+                  <Shield className="w-5 h-5 text-white" />
                 </div>
                 <div>
                   <h3 className="font-semibold text-gray-900">{role.name}</h3>
                   <p className="text-xs text-gray-500">{role.description}</p>
-                  <div className="mt-1">
-                    <span className={`badge ${role.status === 'active' ? 'bg-green-50 text-green-700' : 'bg-gray-100 text-gray-600'}`}>{role.status}</span>
+                  <div className="mt-1.5">
+                    <span className={`badge ${role.status === 'active' ? 'bg-emerald-50 text-emerald-700' : 'bg-gray-100 text-gray-600'}`}>{role.status}</span>
                   </div>
                 </div>
               </div>
               <div className="flex items-center gap-1">
                 {hasPermission('roles:update') && (
-                  <button onClick={() => openEdit(role)} className="p-1.5 text-gray-400 hover:text-primary-600 rounded-lg hover:bg-gray-100">
-                    <Pencil className="w-4 h-4" />
-                  </button>
+                  <button onClick={() => openEdit(role)} className="p-1.5 text-gray-400 hover:text-primary-600 rounded-lg hover:bg-primary-50 transition-all"><Pencil className="w-4 h-4" /></button>
                 )}
                 {hasPermission('roles:update') && (
-                  <button
-                    onClick={() => toggleStatus(role._id)}
-                    className={`p-1.5 rounded-lg hover:bg-gray-100 ${
-                      role.status === 'active' ? 'text-gray-400 hover:text-red-600' : 'text-gray-400 hover:text-green-600'
+                  <button onClick={() => toggleStatus(role._id)}
+                    className={`p-1.5 rounded-lg transition-all ${
+                      role.status === 'active' ? 'text-gray-400 hover:text-red-600 hover:bg-red-50' : 'text-gray-400 hover:text-green-600 hover:bg-green-50'
                     }`}
-                    title={role.status === 'active' ? 'Deactivate' : 'Activate'}
-                    disabled={role.isSystem && role.status === 'active'}
-                  >
+                    title={role.status === 'active' ? 'Deactivate' : 'Activate'} disabled={role.isSystem && role.status === 'active'}>
                     {role.status === 'active' ? <PowerOff className="w-4 h-4" /> : <Power className="w-4 h-4" />}
                   </button>
                 )}
@@ -111,11 +114,11 @@ export default function Roles() {
       </div>
 
       {showModal && (
-        <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4" onClick={() => setShowModal(false)}>
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto p-6" onClick={(e) => e.stopPropagation()}>
+        <div className="modal-overlay" onClick={() => setShowModal(false)}>
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto p-6 animate-scale-in border border-gray-100" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between mb-6">
-              <h2 className="text-lg font-semibold">{editing ? 'Edit Role' : 'Add Role'}</h2>
-              <button onClick={() => setShowModal(false)} className="p-1 text-gray-400 hover:text-gray-600"><X className="w-5 h-5" /></button>
+              <h2 className="text-lg font-semibold text-gray-900">{editing ? 'Edit Role' : 'Add Role'}</h2>
+              <button onClick={() => setShowModal(false)} className="p-1.5 text-gray-400 hover:text-gray-600 rounded-lg hover:bg-gray-100 transition-colors"><X className="w-5 h-5" /></button>
             </div>
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
@@ -123,21 +126,17 @@ export default function Roles() {
                 <div><label className="label">Status</label><select className="input" value={form.status} onChange={(e) => setForm({ ...form, status: e.target.value })}><option value="active">Active</option><option value="inactive">Inactive</option></select></div>
                 <div className="col-span-2"><label className="label">Description</label><textarea className="input" value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} rows={2} /></div>
               </div>
-
               <div><label className="label">Permissions</label>
-                <div className="space-y-3 max-h-80 overflow-y-auto border border-gray-200 rounded-lg p-4">
+                <div className="space-y-3 max-h-80 overflow-y-auto border border-gray-200 rounded-xl p-4">
                   {Object.entries(groupedPermissions).map(([module, perms]) => (
                     <div key={module}>
                       <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">{module}</h4>
                       <div className="grid grid-cols-2 gap-2">
                         {perms.map((perm) => (
-                          <label key={perm._id} className="flex items-center gap-2 text-sm cursor-pointer">
-                            <input
-                              type="checkbox"
-                              checked={form.permissions.includes(perm.name)}
+                          <label key={perm._id} className="flex items-center gap-2 text-sm cursor-pointer select-none">
+                            <input type="checkbox" checked={form.permissions.includes(perm.name)}
                               onChange={() => togglePermission(perm.name)}
-                              className="rounded border-gray-300 text-primary-600 focus:ring-primary-500"
-                            />
+                              className="rounded border-gray-300 text-primary-600 focus:ring-primary-500" />
                             <span className="text-gray-700">{perm.label}</span>
                           </label>
                         ))}
@@ -146,7 +145,6 @@ export default function Roles() {
                   ))}
                 </div>
               </div>
-
               <div className="flex justify-end gap-3 pt-2">
                 <button type="button" onClick={() => setShowModal(false)} className="btn-secondary">Cancel</button>
                 <button type="submit" className="btn-primary">{editing ? 'Update' : 'Create'}</button>
