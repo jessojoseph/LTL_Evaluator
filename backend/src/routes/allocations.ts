@@ -13,6 +13,7 @@ router.get('/:id', requirePermission('allocations:read'), allocationController.g
 router.post('/', requirePermission('allocations:create'), validate(createAllocationSchema), allocationController.create);
 router.put('/:id', requirePermission('allocations:update'), validate(updateAllocationSchema), allocationController.update);
 router.delete('/:id', requirePermission('allocations:delete'), allocationController.remove);
+router.patch('/:id/toggle-status', requirePermission('allocations:update'), allocationController.toggleStatus);
 router.post('/bulk', requirePermission('allocations:bulk_create'), validate(bulkAllocationSchema), allocationController.bulkCreate);
 
 export default router;

@@ -11,8 +11,6 @@ router.get('/:id', roleController.getById);
 router.post('/', requirePermission('roles:create'), roleController.create);
 router.put('/:id', requirePermission('roles:update'), roleController.update);
 router.delete('/:id', requirePermission('roles:delete'), roleController.remove);
-
-// Seed endpoint - requires admin-level permission
-router.post('/seed', requirePermission('roles:create'), roleController.seed);
+router.patch('/:id/toggle-status', requirePermission('roles:update'), roleController.toggleStatus);
 
 export default router;

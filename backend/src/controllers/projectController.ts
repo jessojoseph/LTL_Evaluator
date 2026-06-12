@@ -16,7 +16,7 @@ export async function getAll(req: Request, res: Response): Promise<void> {
       ];
     }
 
-    const projects = await Project.find(filter).populate('projectLeadId', 'name email');
+    const projects = await Project.find(filter).populate('projectLeadId', 'name');
     res.json({ projects });
   } catch (error) {
     res.status(500).json({ message: 'Server error' });
@@ -25,7 +25,7 @@ export async function getAll(req: Request, res: Response): Promise<void> {
 
 export async function getById(req: Request, res: Response): Promise<void> {
   try {
-    const project = await Project.findById(req.params.id).populate('projectLeadId', 'name email');
+    const project = await Project.findById(req.params.id).populate('projectLeadId', 'name');
     if (!project) {
       res.status(404).json({ message: 'Project not found' });
       return;
@@ -40,7 +40,7 @@ export async function create(req: Request, res: Response): Promise<void> {
   try {
     const project = new Project(req.body);
     await project.save();
-    const populated = await project.populate('projectLeadId', 'name email');
+    const populated = await project.populate('projectLeadId', 'name');
     res.status(201).json({ project: populated });
   } catch (error) {
     res.status(500).json({ message: 'Server error' });
@@ -52,7 +52,7 @@ export async function update(req: Request, res: Response): Promise<void> {
     const project = await Project.findByIdAndUpdate(req.params.id, req.body, {
       new: true,
       runValidators: true,
-    }).populate('projectLeadId', 'name email');
+    }).populate('projectLeadId', 'name');
 
     if (!project) {
       res.status(404).json({ message: 'Project not found' });
@@ -66,12 +66,31 @@ export async function update(req: Request, res: Response): Promise<void> {
 
 export async function remove(req: Request, res: Response): Promise<void> {
   try {
-    const project = await Project.findByIdAndDelete(req.params.id);
+    const project = await Project.findByIdAndUpdate(
+      req.params.id,
+      { isActive: false },
+      { new: true }
+    );
     if (!project) {
       res.status(404).json({ message: 'Project not found' });
       return;
     }
-    res.json({ message: 'Project deleted successfully' });
+    res.json({ message: 'Project deactivated successfully', project });
+  } catch (error) {
+    res.status(500).json({ message: 'Server error' });
+  }
+}
+
+export async function toggleStatus(req: Request, res: Response): Promise<void> {
+  try {
+    const project = await Project.findById(req.params.id);
+    if (!project) {
+      res.status(404).json({ message: 'Project not found' });
+      return;
+    }
+    project.isActive = !project.isActive;
+    await project.save();
+    res.json({ project });
   } catch (error) {
     res.status(500).json({ message: 'Server error' });
   }

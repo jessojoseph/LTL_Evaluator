@@ -13,5 +13,6 @@ router.get('/lead-summary', requirePermission('reports:read'), reportController.
 router.get('/free-resources', requirePermission('reports:read'), reportController.freeResources);
 router.get('/overbooked-resources', requirePermission('reports:read'), reportController.overbookedResources);
 router.get('/week-comparison', requirePermission('reports:read'), reportController.weekComparison);
+router.get('/employee-wise', requirePermission('reports:read'), reportController.employeeWise);
 
 export default router;

@@ -9,6 +9,7 @@ export interface IAllocation extends Document {
   extraHours: number;
   allocatedWH: number;
   remarks?: string;
+  status: 'active' | 'inactive';
   createdAt: Date;
   updatedAt: Date;
 }
@@ -16,13 +17,14 @@ export interface IAllocation extends Document {
 const allocationSchema = new Schema<IAllocation>(
   {
     weekId: { type: Schema.Types.ObjectId, ref: 'Week', required: true },
-    projectLeadId: { type: Schema.Types.ObjectId, ref: 'ProjectLead', required: true },
+    projectLeadId: { type: Schema.Types.ObjectId, ref: 'Employee', required: true },
     projectId: { type: Schema.Types.ObjectId, ref: 'Project', required: true },
     employeeId: { type: Schema.Types.ObjectId, ref: 'Employee', required: true },
     allocatedDays: { type: Number, required: true, min: 0 },
     extraHours: { type: Number, default: 0, min: 0 },
     allocatedWH: { type: Number, required: true },
     remarks: { type: String, trim: true },
+    status: { type: String, enum: ['active', 'inactive'], default: 'active' },
   },
   { timestamps: true }
 );

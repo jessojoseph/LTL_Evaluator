@@ -73,30 +73,28 @@ export async function remove(req: Request, res: Response): Promise<void> {
     }
 
     if (permission.isSystem) {
-      res.status(403).json({ message: 'System permissions cannot be deleted' });
+      res.status(403).json({ message: 'System permissions cannot be deactivated' });
       return;
     }
 
-    await Permission.findByIdAndDelete(req.params.id);
-    res.json({ message: 'Permission deleted successfully' });
+    permission.status = 'inactive';
+    await permission.save();
+    res.json({ message: 'Permission deactivated successfully', permission });
   } catch (error) {
     res.status(500).json({ message: 'Server error' });
   }
 }
 
-export async function seed(_req: Request, res: Response): Promise<void> {
+export async function toggleStatus(req: Request, res: Response): Promise<void> {
   try {
-    const existingCount = await Permission.countDocuments();
-    if (existingCount > 0) {
-      res.json({ message: 'Permissions already seeded', count: existingCount });
+    const permission = await Permission.findById(req.params.id);
+    if (!permission) {
+      res.status(404).json({ message: 'Permission not found' });
       return;
     }
-
-    await Permission.insertMany(defaultPermissions);
-    res.status(201).json({
-      message: 'Default permissions seeded successfully',
-      count: defaultPermissions.length,
-    });
+    permission.status = permission.status === 'active' ? 'inactive' : 'active';
+    await permission.save();
+    res.json({ permission });
   } catch (error) {
     res.status(500).json({ message: 'Server error' });
   }

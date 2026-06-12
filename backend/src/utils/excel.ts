@@ -41,6 +41,7 @@ export async function generateWeeklyExport(data: {
   freeResources: Record<string, unknown>[];
   overbookedResources: Record<string, unknown>[];
   dashboard: Record<string, unknown>[];
+  employeeWise?: { employee: string; lead: string; projects: { project: string; lead: string; days: number; extraHours: number; allocatedWH: number }[]; totalWH: number; statusLabel: string; color: string }[];
 }): Promise<ExcelJS.Buffer> {
   const workbook = new ExcelJS.Workbook();
 
@@ -93,6 +94,45 @@ export async function generateWeeklyExport(data: {
     { header: 'Overbooked WH', key: 'overbookedWH', width: 15 },
     { header: 'Projects', key: 'projects', width: 30 },
   ], data.overbookedResources);
+
+  // Employee Wise sheet - flatten projects into rows per employee
+  if (data.employeeWise && data.employeeWise.length > 0) {
+    const flatRows: Record<string, unknown>[] = [];
+    for (const emp of data.employeeWise) {
+      for (const proj of emp.projects) {
+        flatRows.push({
+          employee: emp.employee,
+          lead: emp.lead,
+          project: proj.project,
+          projectLead: proj.lead,
+          days: proj.days,
+          extraHours: proj.extraHours,
+          allocatedWH: proj.allocatedWH,
+        });
+      }
+      // Add a total row per employee
+      flatRows.push({
+        employee: emp.employee,
+        lead: '',
+        project: 'TOTAL',
+        projectLead: '',
+        days: '',
+        extraHours: '',
+        allocatedWH: emp.totalWH,
+        status: emp.statusLabel,
+      });
+    }
+    addSheet(workbook, 'Employee Wise', [
+      { header: 'Employee', key: 'employee', width: 20 },
+      { header: 'Reports To', key: 'lead', width: 20 },
+      { header: 'Project', key: 'project', width: 25 },
+      { header: 'Project Lead', key: 'projectLead', width: 20 },
+      { header: 'Days', key: 'days', width: 10 },
+      { header: 'Extra Hrs', key: 'extraHours', width: 12 },
+      { header: 'Allocated WH', key: 'allocatedWH', width: 15 },
+      { header: 'Status', key: 'status', width: 15 },
+    ], flatRows);
+  }
 
   const buffer = await workbook.xlsx.writeBuffer();
   return buffer;

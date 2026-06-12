@@ -14,7 +14,7 @@ export async function getAll(req: Request, res: Response): Promise<void> {
     if (employeeId) filter.employeeId = employeeId;
 
     const allocations = await Allocation.find(filter)
-      .populate('projectLeadId', 'name')
+      .populate('projectLeadId', 'name designation')
       .populate('projectId', 'name')
       .populate('employeeId', 'name')
       .populate('weekId', 'weekName hoursPerDay');
@@ -28,7 +28,7 @@ export async function getAll(req: Request, res: Response): Promise<void> {
 export async function getById(req: Request, res: Response): Promise<void> {
   try {
     const allocation = await Allocation.findById(req.params.id)
-      .populate('projectLeadId', 'name')
+      .populate('projectLeadId', 'name designation')
       .populate('projectId', 'name')
       .populate('employeeId', 'name')
       .populate('weekId', 'weekName hoursPerDay');
@@ -109,7 +109,7 @@ export async function update(req: Request, res: Response): Promise<void> {
       new: true,
       runValidators: true,
     })
-      .populate('projectLeadId', 'name')
+      .populate('projectLeadId', 'name designation')
       .populate('projectId', 'name')
       .populate('employeeId', 'name')
       .populate('weekId', 'weekName hoursPerDay weeklyCapacity');
@@ -140,12 +140,37 @@ export async function update(req: Request, res: Response): Promise<void> {
 
 export async function remove(req: Request, res: Response): Promise<void> {
   try {
-    const allocation = await Allocation.findByIdAndDelete(req.params.id);
+    const allocation = await Allocation.findByIdAndUpdate(
+      req.params.id,
+      { status: 'inactive' },
+      { new: true }
+    );
     if (!allocation) {
       res.status(404).json({ message: 'Allocation not found' });
       return;
     }
-    res.json({ message: 'Allocation deleted successfully' });
+    res.json({ message: 'Allocation deactivated successfully', allocation });
+  } catch (error) {
+    res.status(500).json({ message: 'Server error' });
+  }
+}
+
+export async function toggleStatus(req: Request, res: Response): Promise<void> {
+  try {
+    const allocation = await Allocation.findById(req.params.id);
+    if (!allocation) {
+      res.status(404).json({ message: 'Allocation not found' });
+      return;
+    }
+    allocation.status = allocation.status === 'active' ? 'inactive' : 'active';
+    await allocation.save();
+    await allocation.populate([
+      { path: 'projectLeadId', select: 'name' },
+      { path: 'projectId', select: 'name' },
+      { path: 'employeeId', select: 'name' },
+      { path: 'weekId', select: 'weekName hoursPerDay weeklyCapacity' },
+    ]);
+    res.json({ allocation });
   } catch (error) {
     res.status(500).json({ message: 'Server error' });
   }
@@ -178,7 +203,7 @@ export async function bulkCreate(req: Request, res: Response): Promise<void> {
 
     const created = await Allocation.insertMany(enriched);
     const populated = await Allocation.find({ _id: { $in: created.map((c) => c._id) } })
-      .populate('projectLeadId', 'name')
+      .populate('projectLeadId', 'name designation')
       .populate('projectId', 'name')
       .populate('employeeId', 'name')
       .populate('weekId', 'weekName');

@@ -5,9 +5,32 @@ import { calculateWeeklyCapacity } from '../utils/helpers';
 
 export async function getAll(req: Request, res: Response): Promise<void> {
   try {
-    const { status } = req.query;
+    const { status, year, month } = req.query;
     const filter: Record<string, unknown> = {};
     if (status) filter.status = status;
+
+    // Year/month filtering using startDate
+    if (year) {
+      const y = parseInt(year as string, 10);
+      if (!isNaN(y)) {
+        const startOfYear = new Date(y, 0, 1);
+        const endOfYear = new Date(y + 1, 0, 1);
+        const dateFilter: Record<string, Date> = {
+          $gte: startOfYear,
+          $lt: endOfYear,
+        };
+
+        if (month) {
+          const m = parseInt(month as string, 10);
+          if (!isNaN(m) && m >= 1 && m <= 12) {
+            dateFilter.$gte = new Date(y, m - 1, 1);
+            dateFilter.$lt = new Date(m === 12 ? y + 1 : y, m === 12 ? 0 : m, 1);
+          }
+        }
+
+        filter.startDate = dateFilter;
+      }
+    }
 
     const weeks = await Week.find(filter).sort({ startDate: -1 });
     res.json({ weeks });
@@ -72,14 +95,33 @@ export async function update(req: Request, res: Response): Promise<void> {
 
 export async function remove(req: Request, res: Response): Promise<void> {
   try {
-    const week = await Week.findByIdAndDelete(req.params.id);
+    const week = await Week.findByIdAndUpdate(
+      req.params.id,
+      { isActive: false },
+      { new: true }
+    );
     if (!week) {
       res.status(404).json({ message: 'Week not found' });
       return;
     }
-    // Also remove associated allocations
-    await Allocation.deleteMany({ weekId: week._id });
-    res.json({ message: 'Week deleted successfully' });
+    // Also soft-delete associated allocations
+    await Allocation.updateMany({ weekId: week._id }, { status: 'inactive' });
+    res.json({ message: 'Week deactivated successfully', week });
+  } catch (error) {
+    res.status(500).json({ message: 'Server error' });
+  }
+}
+
+export async function toggleStatus(req: Request, res: Response): Promise<void> {
+  try {
+    const week = await Week.findById(req.params.id);
+    if (!week) {
+      res.status(404).json({ message: 'Week not found' });
+      return;
+    }
+    week.isActive = !week.isActive;
+    await week.save();
+    res.json({ week });
   } catch (error) {
     res.status(500).json({ message: 'Server error' });
   }

@@ -16,7 +16,8 @@ export const createEmployeeSchema = z.object({
     phone: z.string().optional(),
     designation: z.string().optional(),
     department: z.string().optional(),
-    defaultLeadId: z.string().optional(),
+    defaultLeadId: z.string().optional().transform((v) => (v === '' ? undefined : v)),
+    isLead: z.boolean().optional(),
     status: z.enum(['active', 'inactive']).optional(),
   }),
 });
@@ -28,27 +29,8 @@ export const updateEmployeeSchema = z.object({
     phone: z.string().optional(),
     designation: z.string().optional(),
     department: z.string().optional(),
-    defaultLeadId: z.string().optional(),
-    status: z.enum(['active', 'inactive']).optional(),
-  }),
-  params: z.object({
-    id: z.string(),
-  }),
-});
-
-// Project Lead validators
-export const createProjectLeadSchema = z.object({
-  body: z.object({
-    name: z.string().min(1, 'Name is required').trim(),
-    email: z.string().email('Invalid email'),
-    status: z.enum(['active', 'inactive']).optional(),
-  }),
-});
-
-export const updateProjectLeadSchema = z.object({
-  body: z.object({
-    name: z.string().min(1).trim().optional(),
-    email: z.string().email().optional(),
+    defaultLeadId: z.string().optional().transform((v) => (v === '' ? undefined : v)),
+    isLead: z.boolean().optional(),
     status: z.enum(['active', 'inactive']).optional(),
   }),
   params: z.object({

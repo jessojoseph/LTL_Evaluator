@@ -8,6 +8,7 @@ export interface IWeek extends Document {
   hoursPerDay: number;
   weeklyCapacity: number;
   status: 'draft' | 'published' | 'closed';
+  isActive: boolean;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -25,6 +26,7 @@ const weekSchema = new Schema<IWeek>(
       enum: ['draft', 'published', 'closed'],
       default: 'draft',
     },
+    isActive: { type: Boolean, default: true },
   },
   { timestamps: true }
 );

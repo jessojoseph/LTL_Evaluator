@@ -6,6 +6,7 @@ export interface IEmployee extends Document {
   phone?: string;
   designation?: string;
   department?: string;
+  isLead: boolean;
   defaultLeadId?: Types.ObjectId;
   status: 'active' | 'inactive';
   createdAt: Date;
@@ -19,7 +20,8 @@ const employeeSchema = new Schema<IEmployee>(
     phone: { type: String, trim: true },
     designation: { type: String, trim: true },
     department: { type: String, trim: true },
-    defaultLeadId: { type: Schema.Types.ObjectId, ref: 'ProjectLead' },
+    isLead: { type: Boolean, default: false },
+    defaultLeadId: { type: Schema.Types.ObjectId, ref: 'Employee' },
     status: { type: String, enum: ['active', 'inactive'], default: 'active' },
   },
   { timestamps: true }

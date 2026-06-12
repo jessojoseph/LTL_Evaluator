@@ -13,5 +13,6 @@ router.get('/:id', requirePermission('employees:read'), employeeController.getBy
 router.post('/', requirePermission('employees:create'), validate(createEmployeeSchema), employeeController.create);
 router.put('/:id', requirePermission('employees:update'), validate(updateEmployeeSchema), employeeController.update);
 router.delete('/:id', requirePermission('employees:delete'), employeeController.remove);
+router.patch('/:id/toggle-status', requirePermission('employees:update'), employeeController.toggleStatus);
 
 export default router;

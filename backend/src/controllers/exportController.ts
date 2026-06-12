@@ -4,14 +4,14 @@ import { Week } from '../models/Week';
 import { Allocation } from '../models/Allocation';
 import { Employee } from '../models/Employee';
 import { Project } from '../models/Project';
-import { ProjectLead } from '../models/ProjectLead';
+
 import {
   calculateFreeWH,
   calculateOverbookedWH,
   calculateUtilization,
 } from '../utils/helpers';
 
-import { PopulatedDoc, AllocationPopulated } from '../types';
+import { PopulatedDoc, AllocationPopulated, EmployeeWiseItem } from '../types';
 
 async function getReportData(weekId?: string) {
   const week = weekId
@@ -26,7 +26,7 @@ async function getReportData(weekId?: string) {
     .populate('projectId', 'name')
     .populate('employeeId', 'name')) as unknown as AllocationPopulated[];
   const projects = await Project.find({ status: { $ne: 'completed' } });
-  const leads = await ProjectLead.find({ status: 'active' });
+  const leads = await Employee.find({ isLead: true, status: 'active' });
 
   const totalAllocatedWH = allocations.reduce((sum, a) => sum + a.allocatedWH, 0);
   const totalWeeklyCapacity = week.weeklyCapacity;
@@ -132,6 +132,48 @@ async function getReportData(weekId?: string) {
     .map((e) => ({ ...e, overbookedWH: calculateOverbookedWH(e.capacityWH, e.allocatedWH) }))
     .filter((e) => e.overbookedWH > 0);
 
+  // Employee-wise: group allocations by employee with project breakdown
+  const employeeWiseData = employees
+    .map((emp) => {
+      const empAllocations = allocations.filter(
+        (a) => a.employeeId._id.toString() === emp._id.toString()
+      );
+      if (empAllocations.length === 0) return null;
+      const defaultLead = emp.defaultLeadId as PopulatedDoc | null;
+      const projects = empAllocations.map((a) => ({
+        project: a.projectId.name || '',
+        lead: a.projectLeadId.name || '',
+        days: a.allocatedDays,
+        extraHours: a.extraHours,
+        allocatedWH: a.allocatedWH,
+      }));
+      const totalWH = projects.reduce((s, p) => s + p.allocatedWH, 0);
+      const capacityWH = week.weeklyCapacity;
+      let statusLabel: string, color: string;
+      if (totalWH === 0) {
+        statusLabel = 'No Allocation';
+        color = 'grey';
+      } else if (totalWH > capacityWH) {
+        statusLabel = 'Overbooked';
+        color = 'red';
+      } else if (totalWH < capacityWH) {
+        statusLabel = 'Less Booked';
+        color = 'yellow';
+      } else {
+        statusLabel = 'Fully Booked';
+        color = 'green';
+      }
+      return {
+        employee: emp.name,
+        lead: defaultLead?.name || '-',
+        projects,
+        totalWH,
+        statusLabel,
+        color,
+      };
+    })
+    .filter(Boolean) as EmployeeWiseItem[];
+
   return {
     week,
     dashboardRows,
@@ -140,6 +182,7 @@ async function getReportData(weekId?: string) {
     leadSummary,
     freeResources,
     overbookedResources,
+    employeeWise: employeeWiseData,
   };
 }
 
@@ -158,6 +201,7 @@ export async function exportWeeklyReport(req: Request, res: Response): Promise<v
       leadSummary: data.leadSummary,
       freeResources: data.freeResources,
       overbookedResources: data.overbookedResources,
+      employeeWise: data.employeeWise,
     });
 
     res.setHeader(
@@ -191,6 +235,33 @@ export async function exportEmployeeUtilization(req: Request, res: Response): Pr
 
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
     res.setHeader('Content-Disposition', `attachment; filename=employee-utilization-${data.week.weekName}.xlsx`);
+    res.send(buffer);
+  } catch (error) {
+    console.error('Export error:', error);
+    res.status(500).json({ message: 'Failed to generate Excel report' });
+  }
+}
+
+export async function exportEmployeeWise(req: Request, res: Response): Promise<void> {
+  try {
+    const data = await getReportData(req.query.weekId as string | undefined);
+    if (!data) {
+      res.status(404).json({ message: 'No week found' });
+      return;
+    }
+
+    const buffer = await generateWeeklyExport({
+      dashboard: [],
+      employeeUtilization: [],
+      projectWise: [],
+      leadSummary: [],
+      freeResources: [],
+      overbookedResources: [],
+      employeeWise: data.employeeWise,
+    });
+
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader('Content-Disposition', `attachment; filename=employee-wise-${data.week.weekName}.xlsx`);
     res.send(buffer);
   } catch (error) {
     console.error('Export error:', error);

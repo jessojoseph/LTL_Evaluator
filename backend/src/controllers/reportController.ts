@@ -3,14 +3,14 @@ import { Allocation } from '../models/Allocation';
 import { Week } from '../models/Week';
 import { Employee } from '../models/Employee';
 import { Project } from '../models/Project';
-import { ProjectLead } from '../models/ProjectLead';
+
 import {
   calculateFreeWH,
   calculateOverbookedWH,
   calculateUtilization,
 } from '../utils/helpers';
 
-import { PopulatedDoc, AllocationPopulated } from '../types';
+import { PopulatedDoc, AllocationPopulated, EmployeeWiseItem } from '../types';
 
 export async function dashboard(req: Request, res: Response): Promise<void> {
   try {
@@ -51,7 +51,7 @@ export async function dashboard(req: Request, res: Response): Promise<void> {
       { $group: { _id: '$projectLeadId', totalWH: { $sum: '$allocatedWH' } } },
       {
         $lookup: {
-          from: 'projectleads',
+          from: 'employees',
           localField: '_id',
           foreignField: '_id',
           as: 'lead',
@@ -232,7 +232,7 @@ export async function leadSummary(req: Request, res: Response): Promise<void> {
       return;
     }
 
-    const leads = await ProjectLead.find({ status: 'active' });
+    const leads = await Employee.find({ isLead: true, status: 'active' });
     const allocations = (await Allocation.find({ weekId: week._id })
       .populate('projectLeadId', 'name')
       .populate('projectId', 'name')
@@ -361,6 +361,84 @@ export async function overbookedResources(req: Request, res: Response): Promise<
       .filter((entry) => entry.overbookedWH > 0);
 
     res.json({ report });
+  } catch (error) {
+    res.status(500).json({ message: 'Server error' });
+  }
+}
+
+export async function employeeWise(req: Request, res: Response): Promise<void> {
+  try {
+    const { weekId } = req.query;
+
+    let week;
+    if (weekId) {
+      week = await Week.findById(weekId);
+    } else {
+      week = await Week.findOne().sort({ startDate: -1 });
+    }
+
+    if (!week) {
+      res.json({ report: [] });
+      return;
+    }
+
+    const employees = await Employee.find({ status: 'active' }).populate('defaultLeadId', 'name');
+    const allocations = (await Allocation.find({ weekId: week._id })
+      .populate('projectLeadId', 'name')
+      .populate('projectId', 'name')
+      .populate('employeeId', 'name')) as unknown as AllocationPopulated[];
+
+    const employeeMap = new Map<string, EmployeeWiseItem>();
+
+    for (const emp of employees) {
+      const empAllocations = allocations.filter(
+        (a) => a.employeeId._id.toString() === emp._id.toString()
+      );
+
+      if (empAllocations.length === 0) continue;
+
+      const defaultLead = emp.defaultLeadId as PopulatedDoc | null;
+      const projects = empAllocations.map((a) => ({
+        project: a.projectId.name || '',
+        lead: a.projectLeadId.name || '',
+        days: a.allocatedDays,
+        extraHours: a.extraHours,
+        allocatedWH: a.allocatedWH,
+      }));
+
+      const totalWH = projects.reduce((sum, p) => sum + p.allocatedWH, 0);
+
+      const capacityWH = week.weeklyCapacity;
+      const utilization = totalWH / capacityWH;
+      let statusLabel: string, color: string;
+      if (totalWH === 0) {
+        statusLabel = 'No Allocation';
+        color = 'grey';
+      } else if (totalWH > capacityWH) {
+        statusLabel = 'Overbooked';
+        color = 'red';
+      } else if (totalWH < capacityWH) {
+        statusLabel = 'Less Booked';
+        color = 'yellow';
+      } else {
+        statusLabel = 'Fully Booked';
+        color = 'green';
+      }
+
+      employeeMap.set(emp._id.toString(), {
+        employeeId: emp._id.toString(),
+        employee: emp.name,
+        lead: defaultLead?.name || '-',
+        projects,
+        totalWH,
+        statusLabel,
+        color,
+      });
+    }
+
+    const report = Array.from(employeeMap.values());
+
+    res.json({ week: { id: week._id, name: week.weekName }, report });
   } catch (error) {
     res.status(500).json({ message: 'Server error' });
   }

@@ -72,27 +72,28 @@ export async function remove(req: Request, res: Response): Promise<void> {
     }
 
     if (role.isSystem) {
-      res.status(403).json({ message: 'System roles cannot be deleted' });
+      res.status(403).json({ message: 'System roles cannot be deactivated' });
       return;
     }
 
-    await Role.findByIdAndDelete(req.params.id);
-    res.json({ message: 'Role deleted successfully' });
+    role.status = 'inactive';
+    await role.save();
+    res.json({ message: 'Role deactivated successfully', role });
   } catch (error) {
     res.status(500).json({ message: 'Server error' });
   }
 }
 
-export async function seed(_req: Request, res: Response): Promise<void> {
+export async function toggleStatus(req: Request, res: Response): Promise<void> {
   try {
-    const existingCount = await Role.countDocuments();
-    if (existingCount > 0) {
-      res.json({ message: 'Roles already seeded', count: existingCount });
+    const role = await Role.findById(req.params.id);
+    if (!role) {
+      res.status(404).json({ message: 'Role not found' });
       return;
     }
-
-    await Role.insertMany(defaultRoles);
-    res.status(201).json({ message: 'Default roles seeded successfully', count: defaultRoles.length });
+    role.status = role.status === 'active' ? 'inactive' : 'active';
+    await role.save();
+    res.json({ role });
   } catch (error) {
     res.status(500).json({ message: 'Server error' });
   }

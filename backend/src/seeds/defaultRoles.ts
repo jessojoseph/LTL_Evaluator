@@ -11,6 +11,7 @@ export const defaultRoles = [
       'allocations:create', 'allocations:read', 'allocations:update', 'allocations:delete', 'allocations:bulk_create',
       'reports:read', 'export:read',
       'roles:create', 'roles:read', 'roles:update', 'roles:delete',
+      'permissions:create', 'permissions:read', 'permissions:update', 'permissions:delete',
     ],
   },
   {

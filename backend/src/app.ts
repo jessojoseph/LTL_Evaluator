@@ -4,7 +4,6 @@ import morgan from 'morgan';
 
 import authRoutes from './routes/auth';
 import employeeRoutes from './routes/employees';
-import projectLeadRoutes from './routes/projectLeads';
 import projectRoutes from './routes/projects';
 import weekRoutes from './routes/weeks';
 import allocationRoutes from './routes/allocations';
@@ -12,6 +11,7 @@ import reportRoutes from './routes/reports';
 import exportRoutes from './routes/export';
 import roleRoutes from './routes/roles';
 import permissionRoutes from './routes/permissions';
+import userRoutes from './routes/users';
 
 const app = express();
 
@@ -28,7 +28,6 @@ app.get('/api/health', (_req, res) => {
 // Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/employees', employeeRoutes);
-app.use('/api/project-leads', projectLeadRoutes);
 app.use('/api/projects', projectRoutes);
 app.use('/api/weeks', weekRoutes);
 app.use('/api/allocations', allocationRoutes);
@@ -36,6 +35,7 @@ app.use('/api/reports', reportRoutes);
 app.use('/api/export', exportRoutes);
 app.use('/api/roles', roleRoutes);
 app.use('/api/permissions', permissionRoutes);
+app.use('/api/users', userRoutes);
 
 // 404 handler
 app.use((_req, res) => {

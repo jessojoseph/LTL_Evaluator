@@ -11,8 +11,6 @@ router.get('/:id', requirePermission('permissions:read'), permissionController.g
 router.post('/', requirePermission('permissions:create'), permissionController.create);
 router.put('/:id', requirePermission('permissions:update'), permissionController.update);
 router.delete('/:id', requirePermission('permissions:delete'), permissionController.remove);
-
-// Seed endpoint
-router.post('/seed', requirePermission('permissions:create'), permissionController.seed);
+router.patch('/:id/toggle-status', requirePermission('permissions:update'), permissionController.toggleStatus);
 
 export default router;

@@ -9,5 +9,6 @@ router.use(authenticate);
 router.get('/weekly-report', requirePermission('export:read'), exportController.exportWeeklyReport);
 router.get('/employee-utilization', requirePermission('export:read'), exportController.exportEmployeeUtilization);
 router.get('/project-wise', requirePermission('export:read'), exportController.exportProjectWise);
+router.get('/employee-wise', requirePermission('export:read'), exportController.exportEmployeeWise);
 
 export default router;

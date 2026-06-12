@@ -13,5 +13,6 @@ router.get('/:id', requirePermission('projects:read'), projectController.getById
 router.post('/', requirePermission('projects:create'), validate(createProjectSchema), projectController.create);
 router.put('/:id', requirePermission('projects:update'), validate(updateProjectSchema), projectController.update);
 router.delete('/:id', requirePermission('projects:delete'), projectController.remove);
+router.patch('/:id/toggle-status', requirePermission('projects:update'), projectController.toggleStatus);
 
 export default router;

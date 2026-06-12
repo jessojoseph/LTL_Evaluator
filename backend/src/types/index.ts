@@ -17,3 +17,21 @@ export interface AllocationPopulated {
   projectLeadId: PopulatedDoc;
   projectId: PopulatedDoc;
 }
+
+export interface EmployeeWiseProject {
+  project: string;
+  lead: string;
+  days: number;
+  extraHours: number;
+  allocatedWH: number;
+}
+
+export interface EmployeeWiseItem {
+  employeeId: string;
+  employee: string;
+  lead: string;
+  projects: EmployeeWiseProject[];
+  totalWH: number;
+  statusLabel: string;
+  color: string;
+}

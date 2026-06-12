@@ -3,11 +3,12 @@ import { Employee } from '../models/Employee';
 
 export async function getAll(req: Request, res: Response): Promise<void> {
   try {
-    const { status, leadId, search } = req.query;
+    const { status, leadId, search, isLead } = req.query;
     const filter: Record<string, unknown> = {};
 
     if (status) filter.status = status;
     if (leadId) filter.defaultLeadId = leadId;
+    if (isLead !== undefined) filter.isLead = isLead === 'true';
     if (search) {
       filter.$or = [
         { name: { $regex: search, $options: 'i' } },
@@ -82,6 +83,22 @@ export async function remove(req: Request, res: Response): Promise<void> {
       return;
     }
     res.json({ message: 'Employee deactivated successfully' });
+  } catch (error) {
+    res.status(500).json({ message: 'Server error' });
+  }
+}
+
+export async function toggleStatus(req: Request, res: Response): Promise<void> {
+  try {
+    const employee = await Employee.findById(req.params.id);
+    if (!employee) {
+      res.status(404).json({ message: 'Employee not found' });
+      return;
+    }
+    employee.status = employee.status === 'active' ? 'inactive' : 'active';
+    await employee.save();
+    await employee.populate('defaultLeadId', 'name');
+    res.json({ employee });
   } catch (error) {
     res.status(500).json({ message: 'Server error' });
   }
