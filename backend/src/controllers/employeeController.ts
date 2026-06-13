@@ -1,5 +1,8 @@
 import { Request, Response } from 'express';
+import bcrypt from 'bcryptjs';
 import { Employee } from '../models/Employee';
+import { User } from '../models/User';
+import { Role } from '../models/Role';
 
 export async function getAll(req: Request, res: Response): Promise<void> {
   try {
@@ -40,7 +43,31 @@ export async function create(req: Request, res: Response): Promise<void> {
   try {
     const employee = new Employee(req.body);
     await employee.save();
-    res.status(201).json({ employee });
+
+    // Sync: Create corresponding User if they don't exist
+    let user = await User.findOne({ email: employee.email.toLowerCase() });
+    let tempPassword = '';
+
+    if (!user) {
+      const roleName = employee.isLead ? 'Project Lead' : 'Employee';
+      const role = await Role.findOne({ name: roleName });
+
+      if (role) {
+        tempPassword = 'LTL@welcome123';
+        const passwordHash = await bcrypt.hash(tempPassword, 10);
+
+        user = new User({
+          name: employee.name,
+          email: employee.email.toLowerCase(),
+          passwordHash,
+          roleId: role._id,
+          status: employee.status === 'active' ? 'active' : 'inactive',
+        });
+        await user.save();
+      }
+    }
+
+    res.status(201).json({ employee, tempPassword });
   } catch (error: unknown) {
     if ((error as { code?: number }).code === 11000) {
       res.status(409).json({ message: 'Employee with this email already exists' });
@@ -61,6 +88,21 @@ export async function update(req: Request, res: Response): Promise<void> {
       res.status(404).json({ message: 'Employee not found' });
       return;
     }
+
+    // Sync corresponding User if exists
+    const user = await User.findOne({ email: employee.email.toLowerCase() });
+    if (user) {
+      user.name = employee.name;
+      user.status = employee.status === 'active' ? 'active' : 'inactive';
+
+      const roleName = employee.isLead ? 'Project Lead' : 'Employee';
+      const role = await Role.findOne({ name: roleName });
+      if (role) {
+        user.roleId = role._id;
+      }
+      await user.save();
+    }
+
     res.json({ employee });
   } catch (error: unknown) {
     if ((error as { code?: number }).code === 11000) {
@@ -82,6 +124,13 @@ export async function remove(req: Request, res: Response): Promise<void> {
       res.status(404).json({ message: 'Employee not found' });
       return;
     }
+
+    // Sync: Deactivate corresponding User
+    await User.findOneAndUpdate(
+      { email: employee.email.toLowerCase() },
+      { status: 'inactive' }
+    );
+
     res.json({ message: 'Employee deactivated successfully' });
   } catch (error) {
     res.status(500).json({ message: 'Server error' });
@@ -98,6 +147,13 @@ export async function toggleStatus(req: Request, res: Response): Promise<void> {
     employee.status = employee.status === 'active' ? 'inactive' : 'active';
     await employee.save();
     await employee.populate('defaultLeadId', 'name');
+
+    // Sync: Toggle corresponding User status
+    await User.findOneAndUpdate(
+      { email: employee.email.toLowerCase() },
+      { status: employee.status }
+    );
+
     res.json({ employee });
   } catch (error) {
     res.status(500).json({ message: 'Server error' });

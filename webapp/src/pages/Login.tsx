@@ -1,5 +1,5 @@
 import { useState, FormEvent } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { 
   BarChart3, Eye, EyeOff, Mail, Lock, 
@@ -203,16 +203,12 @@ export default function Login() {
 
             {/* Forgot Password aligned right */}
             <div className="flex justify-end -mt-2">
-              <a 
-                href="#forgot" 
-                onClick={(e) => {
-                  e.preventDefault();
-                  setError('Password reset is not configured.');
-                }}
+              <Link 
+                to="/forgot-password" 
                 className="font-bold text-[#0f5c3a] hover:text-[#0d4f31] hover:underline transition-colors"
               >
                 Forgot password?
-              </a>
+              </Link>
             </div>
 
             {/* Submit Button */}

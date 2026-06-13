@@ -1,9 +1,11 @@
 import { Response } from 'express';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
+import crypto from 'crypto';
 import { User } from '../models/User';
 import { env } from '../config/env';
 import { AuthRequest } from '../middleware/auth';
+import { sendPasswordResetEmail } from '../utils/email';
 
 function parseJwtExpiry(expiry: string): number {
   // Supports format like '7d', '24h', '30m', '60s', or a plain number string
@@ -92,6 +94,56 @@ export async function getMe(req: AuthRequest, res: Response): Promise<void> {
         status: user.status,
       },
     });
+  } catch (error) {
+    res.status(500).json({ message: 'Server error' });
+  }
+}
+
+export async function forgotPassword(req: AuthRequest, res: Response): Promise<void> {
+  try {
+    const { email } = req.body;
+    const user = await User.findOne({ email: email.toLowerCase(), status: 'active' });
+
+    if (!user) {
+      res.status(404).json({ message: 'No active user account found with this email address.' });
+      return;
+    }
+
+    const resetToken = crypto.randomBytes(20).toString('hex');
+    user.resetPasswordToken = resetToken;
+    user.resetPasswordExpires = new Date(Date.now() + 3600000); // 1 hour
+
+    await user.save();
+
+    await sendPasswordResetEmail(user.email, resetToken);
+
+    res.json({ message: 'Password reset link has been successfully sent to your email.' });
+  } catch (error) {
+    res.status(500).json({ message: 'Server error' });
+  }
+}
+
+export async function resetPassword(req: AuthRequest, res: Response): Promise<void> {
+  try {
+    const { token, password } = req.body;
+
+    const user = await User.findOne({
+      resetPasswordToken: token,
+      resetPasswordExpires: { $gt: new Date() },
+    });
+
+    if (!user) {
+      res.status(400).json({ message: 'Invalid or expired password reset token' });
+      return;
+    }
+
+    user.passwordHash = await bcrypt.hash(password, 10);
+    user.resetPasswordToken = undefined;
+    user.resetPasswordExpires = undefined;
+
+    await user.save();
+
+    res.json({ message: 'Password has been reset successfully' });
   } catch (error) {
     res.status(500).json({ message: 'Server error' });
   }

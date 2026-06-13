@@ -6,6 +6,8 @@ export interface IUser extends Document {
   passwordHash: string;
   roleId: Types.ObjectId;
   status: 'active' | 'inactive';
+  resetPasswordToken?: string;
+  resetPasswordExpires?: Date;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -17,6 +19,8 @@ const userSchema = new Schema<IUser>(
     passwordHash: { type: String, required: true },
     roleId: { type: Schema.Types.ObjectId, ref: 'Role', required: true },
     status: { type: String, enum: ['active', 'inactive'], default: 'active' },
+    resetPasswordToken: { type: String },
+    resetPasswordExpires: { type: Date },
   },
   { timestamps: true }
 );

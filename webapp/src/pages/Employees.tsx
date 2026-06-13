@@ -12,6 +12,7 @@ export default function Employees() {
   const [showModal, setShowModal] = useState(false);
   const [editing, setEditing] = useState<Employee | null>(null);
   const [form, setForm] = useState({ name: '', email: '', phone: '', designation: '', department: '', isLead: false, defaultLeadId: '', status: 'active' });
+  const [createdPassword, setCreatedPassword] = useState<{ email: string; pass: string } | null>(null);
 
   const load = () => {
     employeeApi.getAll({ search }).then(({ data }) => setEmployees(data.employees));
@@ -37,9 +38,16 @@ export default function Employees() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (editing) await employeeApi.update(editing._id, form);
-    else await employeeApi.create(form);
-    setShowModal(false);
+    if (editing) {
+      await employeeApi.update(editing._id, form);
+      setShowModal(false);
+    } else {
+      const response = await employeeApi.create(form);
+      setShowModal(false);
+      if (response.data.tempPassword) {
+        setCreatedPassword({ email: form.email, pass: response.data.tempPassword });
+      }
+    }
     load();
   };
 
@@ -179,6 +187,41 @@ export default function Employees() {
                 <button type="submit" className="btn-primary">{editing ? 'Update' : 'Create'}</button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {createdPassword && (
+        <div className="modal-overlay" onClick={() => setCreatedPassword(null)}>
+          <div className="modal-content max-w-md" onClick={(e) => e.stopPropagation()}>
+            <div className="text-center py-4">
+              <div className="w-12 h-12 bg-emerald-50 rounded-full flex items-center justify-center mx-auto mb-4 border border-emerald-100">
+                <span className="text-xl">🔑</span>
+              </div>
+              <h3 className="text-lg font-bold text-gray-950 mb-2">Login Credentials Generated</h3>
+              <p className="text-sm text-gray-500 mb-6">
+                A user login account has been automatically created for this employee.
+              </p>
+              
+              <div className="space-y-3 bg-gray-50 border border-gray-150 rounded-2xl p-5 text-left mb-6 font-medium text-sm">
+                <div>
+                  <span className="text-xs text-gray-400 block font-semibold">EMAIL</span>
+                  <span className="text-gray-800 break-all select-all font-semibold">{createdPassword.email}</span>
+                </div>
+                <div>
+                  <span className="text-xs text-gray-400 block font-semibold">TEMPORARY PASSWORD</span>
+                  <span className="text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded font-mono select-all font-bold text-base">{createdPassword.pass}</span>
+                </div>
+              </div>
+
+              <p className="text-xs text-gray-400 mb-6 font-semibold">
+                Please copy and share these details with the employee. They will be able to reset this password.
+              </p>
+
+              <button onClick={() => setCreatedPassword(null)} className="btn-primary w-full py-3">
+                Done
+              </button>
+            </div>
           </div>
         </div>
       )}
