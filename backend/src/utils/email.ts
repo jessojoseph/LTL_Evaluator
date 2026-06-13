@@ -15,7 +15,7 @@ export async function sendPasswordResetEmail(email: string, token: string): Prom
   }
 
   // Fallback to Brevo HTTP API if using Brevo and having an API Key to bypass port blocks on Render
-  if (env.smtpHost === 'smtp-relay.brevo.com' && env.smtpPass.startsWith('xsmtpsib-') && typeof fetch !== 'undefined') {
+  if (env.smtpHost === 'smtp-relay.brevo.com' && (env.smtpPass.startsWith('xsmtpsib-') || env.smtpPass.startsWith('xkeysib-')) && typeof fetch !== 'undefined') {
     try {
       console.log('🔗 Sending email via Brevo HTTP API to bypass SMTP port blocks on cloud hosting...');
       
