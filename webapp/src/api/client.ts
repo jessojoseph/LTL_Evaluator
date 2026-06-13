@@ -1,7 +1,8 @@
 import axios from 'axios';
 
 const api = axios.create({
-  baseURL: (import.meta.env.VITE_API_URL as string) || '/api',
+  baseURL: (import.meta.env.VITE_API_URL as string) || 
+           (import.meta.env.DEV ? '/api' : 'https://ltl-evaluator.onrender.com/api'),
   headers: { 'Content-Type': 'application/json' },
 });
 
