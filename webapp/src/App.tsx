@@ -11,6 +11,8 @@ import Projects from './pages/Projects';
 import Weeks from './pages/Weeks';
 import Allocations from './pages/Allocations';
 import Reports from './pages/Reports';
+import Leaves from './pages/Leaves';
+import LeaveRules from './pages/LeaveRules';
 import Roles from './pages/Roles';
 import Permissions from './pages/Permissions';
 import Users from './pages/Users';
@@ -34,6 +36,8 @@ export default function App() {
             <Route path="/employees" element={<Employees />} />
             <Route path="/projects" element={<Projects />} />
             <Route path="/weeks" element={<Weeks />} />
+            <Route path="/leaves" element={<Leaves />} />
+            <Route path="/leave-rules" element={<LeaveRules />} />
             <Route path="/allocations" element={<Allocations />} />
             <Route path="/reports" element={<Reports />} />
             <Route path="/users" element={<Users />} />

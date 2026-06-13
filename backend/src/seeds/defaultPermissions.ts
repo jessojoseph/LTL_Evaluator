@@ -43,6 +43,20 @@ export const defaultPermissions = [
   { name: 'roles:update', label: 'Update Roles', description: 'Edit roles and their permissions', module: 'Roles', isSystem: true },
   { name: 'roles:delete', label: 'Delete Roles', description: 'Delete non-system roles', module: 'Roles', isSystem: true },
 
+  // Leaves
+  { name: 'leaves:create', label: 'Create Leaves', description: 'Create leave requests', module: 'Leaves', isSystem: true },
+  { name: 'leaves:read', label: 'Read Leaves', description: 'View leave requests', module: 'Leaves', isSystem: true },
+  { name: 'leaves:update', label: 'Update Leaves', description: 'Edit leave requests', module: 'Leaves', isSystem: true },
+  { name: 'leaves:delete', label: 'Delete Leaves', description: 'Delete leave requests', module: 'Leaves', isSystem: true },
+  { name: 'leaves:approve', label: 'Approve Leaves', description: 'Approve or reject leave requests', module: 'Leaves', isSystem: true },
+  { name: 'leaves:self', label: 'Self Leave', description: 'Apply for and view own leave requests', module: 'Leaves', isSystem: true },
+
+  // Leave Rules
+  { name: 'leave_rules:create', label: 'Create Leave Rules', description: 'Create leave allocation rules', module: 'Leave Rules', isSystem: true },
+  { name: 'leave_rules:read', label: 'Read Leave Rules', description: 'View leave allocation rules', module: 'Leave Rules', isSystem: true },
+  { name: 'leave_rules:update', label: 'Update Leave Rules', description: 'Edit leave allocation rules', module: 'Leave Rules', isSystem: true },
+  { name: 'leave_rules:delete', label: 'Delete Leave Rules', description: 'Delete leave allocation rules', module: 'Leave Rules', isSystem: true },
+
   // Permissions
   { name: 'permissions:create', label: 'Create Permissions', description: 'Create new permissions', module: 'Permissions', isSystem: true },
   { name: 'permissions:read', label: 'Read Permissions', description: 'View permissions', module: 'Permissions', isSystem: true },

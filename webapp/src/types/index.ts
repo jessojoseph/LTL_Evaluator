@@ -22,6 +22,13 @@ export interface Employee {
   isLead?: boolean;
   defaultLeadId?: { _id: string; name: string };
   status: string;
+  employeeCode?: string;
+  employmentType?: 'full_time' | 'part_time' | 'contract' | 'intern' | 'probation';
+  skills?: string[];
+  joinDate?: string;
+  resignationDate?: string;
+  resignationReason?: 'resigned' | 'moved_city' | 'career_change' | 'retirement' | 'termination' | 'other';
+  resignationNotes?: string;
 }
 
 export interface Project {
@@ -163,4 +170,34 @@ export interface OverbookedResource {
   allocatedWH: number;
   overbookedWH: number;
   projects: string[];
+}
+
+export interface Leave {
+  _id: string;
+  employeeId: { _id: string; name: string; email: string; employeeCode?: string };
+  startDate: string;
+  endDate: string;
+  type: 'annual' | 'sick' | 'personal' | 'other' | 'casual' | 'medical';
+  reason?: string;
+  status: 'pending' | 'approved' | 'rejected' | 'cancelled';
+  approvedBy?: { _id: string; name: string };
+  isLop: boolean;
+  lopReason?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface LeaveRule {
+  _id: string;
+  name: string;
+  employmentType: 'full_time' | 'part_time' | 'contract' | 'intern' | 'probation';
+  leaveType: 'casual' | 'medical' | 'annual' | 'sick' | 'personal' | 'other';
+  periodType: 'yearly' | 'half_yearly' | 'quarterly' | 'monthly';
+  maxPerPeriod: number;
+  annualAllocation: number;
+  carryOver: boolean;
+  description?: string;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
 }

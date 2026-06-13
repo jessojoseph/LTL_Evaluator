@@ -6,16 +6,18 @@ import { Role } from '../models/Role';
 
 export async function getAll(req: Request, res: Response): Promise<void> {
   try {
-    const { status, leadId, search, isLead } = req.query;
+    const { status, leadId, search, isLead, employmentType } = req.query;
     const filter: Record<string, unknown> = {};
 
     if (status) filter.status = status;
     if (leadId) filter.defaultLeadId = leadId;
     if (isLead !== undefined) filter.isLead = isLead === 'true';
+    if (employmentType) filter.employmentType = employmentType;
     if (search) {
       filter.$or = [
         { name: { $regex: search, $options: 'i' } },
         { email: { $regex: search, $options: 'i' } },
+        { employeeCode: { $regex: search, $options: 'i' } },
       ];
     }
 
@@ -117,7 +119,7 @@ export async function remove(req: Request, res: Response): Promise<void> {
   try {
     const employee = await Employee.findByIdAndUpdate(
       req.params.id,
-      { status: 'inactive' },
+      { status: 'resigned', resignationDate: new Date() },
       { new: true }
     );
     if (!employee) {
@@ -131,7 +133,7 @@ export async function remove(req: Request, res: Response): Promise<void> {
       { status: 'inactive' }
     );
 
-    res.json({ message: 'Employee deactivated successfully' });
+    res.json({ message: 'Employee marked as resigned successfully' });
   } catch (error) {
     res.status(500).json({ message: 'Server error' });
   }
@@ -152,6 +154,33 @@ export async function toggleStatus(req: Request, res: Response): Promise<void> {
     await User.findOneAndUpdate(
       { email: employee.email.toLowerCase() },
       { status: employee.status }
+    );
+
+    res.json({ employee });
+  } catch (error) {
+    res.status(500).json({ message: 'Server error' });
+  }
+}
+
+export async function resign(req: Request, res: Response): Promise<void> {
+  try {
+    const { resignationDate, resignationReason, resignationNotes } = req.body;
+    const employee = await Employee.findById(req.params.id);
+    if (!employee) {
+      res.status(404).json({ message: 'Employee not found' });
+      return;
+    }
+    employee.status = 'resigned';
+    employee.resignationDate = resignationDate ? new Date(resignationDate) : new Date();
+    if (resignationReason) employee.resignationReason = resignationReason;
+    if (resignationNotes !== undefined) employee.resignationNotes = resignationNotes;
+    await employee.save();
+    await employee.populate('defaultLeadId', 'name');
+
+    // Sync: Deactivate corresponding User
+    await User.findOneAndUpdate(
+      { email: employee.email.toLowerCase() },
+      { status: 'inactive' }
     );
 
     res.json({ employee });

@@ -3,22 +3,24 @@ import { NavLink, Outlet, useNavigate, useLocation } from 'react-router-dom';
 import {
   LayoutDashboard, Users, FolderKanban, Calendar,
   FileSpreadsheet, BarChart3, Shield, Key, UserCog, LogOut, Menu, X,
-  Bell,
+  Bell, CalendarCheck, Scale,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import BrandLogo from './BrandLogo';
 import { launcherIcon } from '../assets';
 
 const navItems = [
-  { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, permission: 'reports:read' },
-  { to: '/employees', label: 'Employees', icon: Users, permission: 'employees:read' },
-  { to: '/projects', label: 'Projects', icon: FolderKanban, permission: 'projects:read' },
-  { to: '/weeks', label: 'Weeks', icon: Calendar, permission: 'weeks:read' },
-  { to: '/allocations', label: 'Allocations', icon: FileSpreadsheet, permission: 'allocations:read' },
-  { to: '/reports', label: 'Reports', icon: BarChart3, permission: 'reports:read' },
-  { to: '/users', label: 'Users', icon: UserCog, permission: 'users:read' },
-  { to: '/roles', label: 'Roles', icon: Shield, permission: 'roles:read' },
-  { to: '/permissions', label: 'Permissions', icon: Key, permission: 'permissions:read' },
+  { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, permissions: ['reports:read'] },
+  { to: '/employees', label: 'Employees', icon: Users, permissions: ['employees:read'] },
+  { to: '/projects', label: 'Projects', icon: FolderKanban, permissions: ['projects:read'] },
+  { to: '/weeks', label: 'Weeks', icon: Calendar, permissions: ['weeks:read'] },
+  { to: '/leaves', label: 'Leaves', icon: CalendarCheck, permissions: ['leaves:read', 'leaves:self'] },
+  { to: '/leave-rules', label: 'Leave Rules', icon: Scale, permissions: ['leave_rules:read'] },
+  { to: '/allocations', label: 'Allocations', icon: FileSpreadsheet, permissions: ['allocations:read'] },
+  { to: '/reports', label: 'Reports', icon: BarChart3, permissions: ['reports:read'] },
+  { to: '/users', label: 'Users', icon: UserCog, permissions: ['users:read'] },
+  { to: '/roles', label: 'Roles', icon: Shield, permissions: ['roles:read'] },
+  { to: '/permissions', label: 'Permissions', icon: Key, permissions: ['permissions:read'] },
 ];
 
 const getGreeting = () => {
@@ -29,7 +31,7 @@ const getGreeting = () => {
 };
 
 export default function Layout() {
-  const { user, logout, hasPermission } = useAuth();
+  const { user, logout, hasAnyPermission } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -39,7 +41,7 @@ export default function Layout() {
     navigate('/login');
   };
 
-  const visibleItems = navItems.filter((item) => hasPermission(item.permission));
+  const visibleItems = navItems.filter((item) => hasAnyPermission(...item.permissions));
 
   const isDashboard = location.pathname === '/dashboard' || location.pathname === '/';
 

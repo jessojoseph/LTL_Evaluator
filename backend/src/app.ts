@@ -12,6 +12,8 @@ import exportRoutes from './routes/export';
 import roleRoutes from './routes/roles';
 import permissionRoutes from './routes/permissions';
 import userRoutes from './routes/users';
+import leaveRoutes from './routes/leaves';
+import leaveRuleRoutes from './routes/leaveRules';
 
 const app = express();
 
@@ -36,6 +38,8 @@ app.use('/api/export', exportRoutes);
 app.use('/api/roles', roleRoutes);
 app.use('/api/permissions', permissionRoutes);
 app.use('/api/users', userRoutes);
+app.use('/api/leaves', leaveRoutes);
+app.use('/api/leave-rules', leaveRuleRoutes);
 
 // 404 handler
 app.use((_req, res) => {

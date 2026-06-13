@@ -47,6 +47,7 @@ export const employeeApi = {
   update: (id: string, data: Record<string, unknown>) => api.put(`/employees/${id}`, data),
   remove: (id: string) => api.delete(`/employees/${id}`),
   toggleStatus: (id: string) => api.patch(`/employees/${id}/toggle-status`),
+  resign: (id: string, data: Record<string, unknown>) => api.patch(`/employees/${id}/resign`, data),
 };
 
 // Projects
@@ -138,6 +139,30 @@ export const userApi = {
   update: (id: string, data: Record<string, unknown>) => api.put(`/users/${id}`, data),
   remove: (id: string) => api.delete(`/users/${id}`),
   toggleStatus: (id: string) => api.patch(`/users/${id}/toggle-status`),
+};
+
+// Leaves
+export const leaveApi = {
+  getAll: (params?: Record<string, string>) => api.get('/leaves', { params }),
+  getById: (id: string) => api.get(`/leaves/${id}`),
+  getSelf: (params?: Record<string, string>) => api.get('/leaves/self', { params }),
+  create: (data: Record<string, unknown>) => api.post('/leaves', data),
+  createSelf: (data: Record<string, unknown>) => api.post('/leaves/self', data),
+  update: (id: string, data: Record<string, unknown>) => api.put(`/leaves/${id}`, data),
+  remove: (id: string) => api.delete(`/leaves/${id}`),
+  approve: (id: string, approvedBy: string) => api.patch(`/leaves/${id}/approve`, { approvedBy }),
+  reject: (id: string, approvedBy: string) => api.patch(`/leaves/${id}/reject`, { approvedBy }),
+  cancelSelf: (id: string) => api.patch(`/leaves/self/${id}/cancel`),
+  revoke: (id: string) => api.patch(`/leaves/${id}/revoke`),
+};
+
+// Leave Rules
+export const leaveRuleApi = {
+  getAll: (params?: Record<string, string>) => api.get('/leave-rules', { params }),
+  getById: (id: string) => api.get(`/leave-rules/${id}`),
+  create: (data: Record<string, unknown>) => api.post('/leave-rules', data),
+  update: (id: string, data: Record<string, unknown>) => api.put(`/leave-rules/${id}`, data),
+  remove: (id: string) => api.delete(`/leave-rules/${id}`),
 };
 
 export function downloadExcel(response: Blob, filename: string) {

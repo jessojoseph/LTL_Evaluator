@@ -10,6 +10,8 @@ export const defaultRoles = [
       'weeks:create', 'weeks:read', 'weeks:update', 'weeks:delete', 'weeks:copy',
       'allocations:create', 'allocations:read', 'allocations:update', 'allocations:delete', 'allocations:bulk_create',
       'reports:read', 'export:read',
+      'leaves:create', 'leaves:read', 'leaves:update', 'leaves:delete', 'leaves:approve',
+      'leave_rules:create', 'leave_rules:read', 'leave_rules:update', 'leave_rules:delete',
       'roles:create', 'roles:read', 'roles:update', 'roles:delete',
       'permissions:create', 'permissions:read', 'permissions:update', 'permissions:delete',
     ],
@@ -25,6 +27,7 @@ export const defaultRoles = [
       'weeks:read', 'weeks:create', 'weeks:update', 'weeks:copy',
       'allocations:read', 'allocations:create', 'allocations:update', 'allocations:delete', 'allocations:bulk_create',
       'reports:read', 'export:read',
+      'leaves:self',
     ],
   },
   {
@@ -38,6 +41,7 @@ export const defaultRoles = [
       'weeks:read',
       'allocations:read', 'allocations:create', 'allocations:update',
       'reports:read',
+      'leaves:self',
     ],
   },
   {
@@ -49,6 +53,7 @@ export const defaultRoles = [
       'weeks:read',
       'allocations:read',
       'reports:read',
+      'leaves:self',
     ],
   },
 ];
