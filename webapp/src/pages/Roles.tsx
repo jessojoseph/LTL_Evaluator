@@ -2,22 +2,50 @@ import { useEffect, useState } from 'react';
 import { roleApi, permissionApi } from '../api/client';
 import { useAuth } from '../context/AuthContext';
 import type { Role, Permission } from '../types';
-import { Plus, Pencil, Shield, X, Power, PowerOff } from 'lucide-react';
+import { Plus, Pencil, Search, Shield, X, Power, PowerOff } from 'lucide-react';
+import { CardSkeleton } from '../components/Loader';
+import Pagination from '../components/Pagination';
+import { usePagination } from '../hooks/usePagination';
 
 export default function Roles() {
   const { hasPermission } = useAuth();
   const [roles, setRoles] = useState<Role[]>([]);
   const [permissions, setPermissions] = useState<Permission[]>([]);
+  const [search, setSearch] = useState('');
   const [showModal, setShowModal] = useState(false);
   const [editing, setEditing] = useState<Role | null>(null);
   const [form, setForm] = useState({ name: '', description: '', permissions: [] as string[], status: 'active' });
+  const [loading, setLoading] = useState(true);
 
   const load = async () => {
-    const [rRes, pRes] = await Promise.all([roleApi.getAll(), permissionApi.getAll()]);
-    setRoles(rRes.data.roles);
-    setPermissions(pRes.data.permissions);
+    setLoading(true);
+    try {
+      const [rRes, pRes] = await Promise.all([roleApi.getAll(), permissionApi.getAll()]);
+      setRoles(rRes.data.roles);
+      setPermissions(pRes.data.permissions);
+    } finally {
+      setLoading(false);
+    }
   };
   useEffect(() => { load(); }, []);
+
+  const {
+    paginatedData,
+    totalItems,
+    currentPage,
+    totalPages,
+    pageSize,
+    setCurrentPage,
+    setPageSize,
+    goToFirstPage,
+  } = usePagination({
+    data: roles,
+    pageSize: 9,
+    searchFields: ['name', 'description'],
+    searchQuery: search,
+  });
+
+  useEffect(() => { goToFirstPage(); }, [search]);
 
   const openCreate = () => { setEditing(null); setForm({ name: '', description: '', permissions: [], status: 'active' }); setShowModal(true); };
   const openEdit = (r: Role) => { setEditing(r); setForm({ name: r.name, description: r.description, permissions: r.permissions, status: r.status }); setShowModal(true); };
@@ -64,54 +92,76 @@ export default function Roles() {
         {hasPermission('roles:create') && <button onClick={openCreate} className="btn-primary"><Plus className="w-4 h-4" /> Add Role</button>}
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {roles.map((role) => (
-          <div key={role._id} className="card-hover p-5">
-            <div className="flex items-start justify-between mb-3">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 gradient-primary rounded-xl flex items-center justify-center shadow-sm">
-                  <Shield className="w-5 h-5 text-white" />
-                </div>
-                <div>
-                  <h3 className="font-semibold text-gray-900">{role.name}</h3>
-                  <p className="text-xs text-gray-500">{role.description}</p>
-                  <div className="mt-1.5">
-                    <span className={`badge ${role.status === 'active' ? 'bg-emerald-50 text-emerald-700' : 'bg-gray-100 text-gray-600'}`}>{role.status}</span>
+      <div className="relative max-w-sm">
+        <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+        <input className="input pl-10" placeholder="Search roles..." value={search} onChange={(e) => setSearch(e.target.value)} />
+      </div>
+
+      {loading ? (
+        <CardSkeleton count={6} />
+      ) : (
+        <>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {paginatedData.map((role) => (
+              <div key={role._id} className="card-hover p-5">
+                <div className="flex items-start justify-between mb-3">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 gradient-primary rounded-xl flex items-center justify-center shadow-sm">
+                      <Shield className="w-5 h-5 text-white" />
+                    </div>
+                    <div>
+                      <h3 className="font-semibold text-gray-900">{role.name}</h3>
+                      <p className="text-xs text-gray-500">{role.description}</p>
+                      <div className="mt-1.5">
+                        <span className={`badge ${role.status === 'active' ? 'bg-emerald-50 text-emerald-700' : 'bg-gray-100 text-gray-600'}`}>{role.status}</span>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    {hasPermission('roles:update') && (
+                      <button onClick={() => openEdit(role)} className="p-1.5 text-gray-400 hover:text-primary-600 rounded-lg hover:bg-primary-50 transition-all"><Pencil className="w-4 h-4" /></button>
+                    )}
+                    {hasPermission('roles:update') && (
+                      <button onClick={() => toggleStatus(role._id)}
+                        className={`p-1.5 rounded-lg transition-all ${
+                          role.status === 'active' ? 'text-gray-400 hover:text-red-600 hover:bg-red-50' : 'text-gray-400 hover:text-green-600 hover:bg-green-50'
+                        }`}
+                        title={role.status === 'active' ? 'Deactivate' : 'Activate'} disabled={role.isSystem && role.status === 'active'}>
+                        {role.status === 'active' ? <PowerOff className="w-4 h-4" /> : <Power className="w-4 h-4" />}
+                      </button>
+                    )}
                   </div>
                 </div>
+                <div className="flex flex-wrap gap-1.5">
+                  {role.permissions.slice(0, 8).map((p) => (
+                    <span key={p} className="badge bg-gray-100 text-gray-600">{p.split(':')[1] || p}</span>
+                  ))}
+                  {role.permissions.length > 8 && (
+                    <span className="badge bg-gray-100 text-gray-500">+{role.permissions.length - 8} more</span>
+                  )}
+                </div>
+                <div className="mt-3 flex items-center gap-2 text-xs text-gray-400">
+                  <span className={`badge ${role.isSystem ? 'bg-purple-50 text-purple-700' : 'bg-gray-100 text-gray-600'}`}>
+                    {role.isSystem ? 'System' : 'Custom'}
+                  </span>
+                  <span>{role.permissions.length} permissions</span>
+                </div>
               </div>
-              <div className="flex items-center gap-1">
-                {hasPermission('roles:update') && (
-                  <button onClick={() => openEdit(role)} className="p-1.5 text-gray-400 hover:text-primary-600 rounded-lg hover:bg-primary-50 transition-all"><Pencil className="w-4 h-4" /></button>
-                )}
-                {hasPermission('roles:update') && (
-                  <button onClick={() => toggleStatus(role._id)}
-                    className={`p-1.5 rounded-lg transition-all ${
-                      role.status === 'active' ? 'text-gray-400 hover:text-red-600 hover:bg-red-50' : 'text-gray-400 hover:text-green-600 hover:bg-green-50'
-                    }`}
-                    title={role.status === 'active' ? 'Deactivate' : 'Activate'} disabled={role.isSystem && role.status === 'active'}>
-                    {role.status === 'active' ? <PowerOff className="w-4 h-4" /> : <Power className="w-4 h-4" />}
-                  </button>
-                )}
-              </div>
-            </div>
-            <div className="flex flex-wrap gap-1.5">
-              {role.permissions.slice(0, 8).map((p) => (
-                <span key={p} className="badge bg-gray-100 text-gray-600">{p.split(':')[1] || p}</span>
-              ))}
-              {role.permissions.length > 8 && (
-                <span className="badge bg-gray-100 text-gray-500">+{role.permissions.length - 8} more</span>
-              )}
-            </div>
-            <div className="mt-3 flex items-center gap-2 text-xs text-gray-400">
-              <span className={`badge ${role.isSystem ? 'bg-purple-50 text-purple-700' : 'bg-gray-100 text-gray-600'}`}>
-                {role.isSystem ? 'System' : 'Custom'}
-              </span>
-              <span>{role.permissions.length} permissions</span>
-            </div>
+            ))}
           </div>
-        ))}
-      </div>
+          {paginatedData.length === 0 && !loading && (
+            <div className="text-center py-12 text-gray-400">No roles found</div>
+          )}
+          <Pagination
+            currentPage={currentPage}
+            totalPages={totalPages}
+            totalItems={totalItems}
+            pageSize={pageSize}
+            onPageChange={setCurrentPage}
+            onPageSizeChange={setPageSize}
+          />
+        </>
+      )}
 
       {showModal && (
         <div className="modal-overlay" onClick={() => setShowModal(false)}>

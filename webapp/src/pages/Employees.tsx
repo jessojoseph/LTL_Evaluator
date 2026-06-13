@@ -3,6 +3,9 @@ import { employeeApi } from '../api/client';
 import { useAuth } from '../context/AuthContext';
 import type { Employee } from '../types';
 import { Plus, Pencil, Search, X, Power, PowerOff, Users as UsersIcon } from 'lucide-react';
+import { TableSkeleton } from '../components/Loader';
+import Pagination from '../components/Pagination';
+import { usePagination } from '../hooks/usePagination';
 
 export default function Employees() {
   const { hasPermission } = useAuth();
@@ -13,13 +16,39 @@ export default function Employees() {
   const [editing, setEditing] = useState<Employee | null>(null);
   const [form, setForm] = useState({ name: '', email: '', phone: '', designation: '', department: '', isLead: false, defaultLeadId: '', status: 'active' });
   const [createdPassword, setCreatedPassword] = useState<{ email: string; pass: string } | null>(null);
+  const [loading, setLoading] = useState(true);
 
-  const load = () => {
-    employeeApi.getAll({ search }).then(({ data }) => setEmployees(data.employees));
-    employeeApi.getAll().then(({ data }) => setAllEmployees(data.employees));
+  const load = async () => {
+    setLoading(true);
+    try {
+      const [empRes, allRes] = await Promise.all([
+        employeeApi.getAll({ search }),
+        employeeApi.getAll(),
+      ]);
+      setEmployees(empRes.data.employees);
+      setAllEmployees(allRes.data.employees);
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => { load(); }, [search]);
+
+  const {
+    paginatedData,
+    totalItems,
+    currentPage,
+    totalPages,
+    pageSize,
+    setCurrentPage,
+    setPageSize,
+    goToFirstPage,
+  } = usePagination({
+    data: employees,
+    pageSize: 10,
+  });
+
+  useEffect(() => { goToFirstPage(); }, [search]);
 
   const openCreate = () => {
     setEditing(null);
@@ -84,72 +113,84 @@ export default function Employees() {
 
       <div className="card overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="table-modern">
-            <thead>
-              <tr className="bg-gray-50/80 border-b border-gray-100">
-                <th className="text-left px-4 py-3.5 text-xs font-semibold text-gray-500 uppercase tracking-wider">Name</th>
-                <th className="text-left px-4 py-3.5 text-xs font-semibold text-gray-500 uppercase tracking-wider">Email</th>
-                <th className="text-left px-4 py-3.5 text-xs font-semibold text-gray-500 uppercase tracking-wider">Designation</th>
-                <th className="text-left px-4 py-3.5 text-xs font-semibold text-gray-500 uppercase tracking-wider">Department</th>
-                <th className="text-center px-4 py-3.5 text-xs font-semibold text-gray-500 uppercase tracking-wider">Lead</th>
-                <th className="text-left px-4 py-3.5 text-xs font-semibold text-gray-500 uppercase tracking-wider">Reports To</th>
-                <th className="text-left px-4 py-3.5 text-xs font-semibold text-gray-500 uppercase tracking-wider">Status</th>
-                <th className="text-right px-4 py-3.5 text-xs font-semibold text-gray-500 uppercase tracking-wider">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-100">
-              {employees.map((emp) => (
-                <tr key={emp._id} className="hover:bg-primary-50/40 transition-colors duration-150">
-                  <td className="font-semibold text-gray-900">
-                    <div className="flex items-center gap-2.5">
-                      <div className="w-8 h-8 gradient-primary rounded-lg flex items-center justify-center shadow-sm">
-                        <span className="text-xs font-bold text-white">{emp.name.charAt(0).toUpperCase()}</span>
-                      </div>
-                      {emp.name}
-                    </div>
-                  </td>
-                  <td className="text-gray-600">{emp.email}</td>
-                  <td className="text-gray-600">{emp.designation || '-'}</td>
-                  <td className="text-gray-600">{emp.department || '-'}</td>
-                  <td className="text-center">
-                    {emp.isLead ? (
-                      <span className="badge bg-primary-50 text-primary-700">Lead</span>
-                    ) : (
-                      <span className="text-gray-300">-</span>
-                    )}
-                  </td>
-                  <td className="text-gray-600">{emp.defaultLeadId?.name || '-'}</td>
-                  <td>
-                    <span className={`badge ${emp.status === 'active' ? 'bg-emerald-50 text-emerald-700' : 'bg-gray-100 text-gray-600'}`}>
-                      {emp.status}
-                    </span>
-                  </td>
-                  <td className="text-right">
-                    <div className="flex items-center justify-end gap-1">
-                      {hasPermission('employees:update') && (
-                        <button onClick={() => openEdit(emp)} className="p-2 text-gray-400 hover:text-primary-600 rounded-xl hover:bg-primary-50 transition-all">
-                          <Pencil className="w-4 h-4" />
-                        </button>
-                      )}
-                      {hasPermission('employees:update') && (
-                        <button onClick={() => toggleStatus(emp._id)}
-                          className={`p-2 rounded-xl transition-all ${
-                            emp.status === 'active' ? 'text-gray-400 hover:text-red-600 hover:bg-red-50' : 'text-gray-400 hover:text-green-600 hover:bg-green-50'
-                          }`}
-                          title={emp.status === 'active' ? 'Deactivate' : 'Activate'}>
-                          {emp.status === 'active' ? <PowerOff className="w-4 h-4" /> : <Power className="w-4 h-4" />}
-                        </button>
-                      )}
-                    </div>
-                  </td>
+          {loading ? (
+            <TableSkeleton rows={5} cols={8} />
+          ) : (
+            <table className="table-modern">
+              <thead>
+                <tr className="bg-gray-50/80 border-b border-gray-100">
+                  <th className="text-left px-4 py-3.5 text-xs font-semibold text-gray-500 uppercase tracking-wider">Name</th>
+                  <th className="text-left px-4 py-3.5 text-xs font-semibold text-gray-500 uppercase tracking-wider">Email</th>
+                  <th className="text-left px-4 py-3.5 text-xs font-semibold text-gray-500 uppercase tracking-wider">Designation</th>
+                  <th className="text-left px-4 py-3.5 text-xs font-semibold text-gray-500 uppercase tracking-wider">Department</th>
+                  <th className="text-center px-4 py-3.5 text-xs font-semibold text-gray-500 uppercase tracking-wider">Lead</th>
+                  <th className="text-left px-4 py-3.5 text-xs font-semibold text-gray-500 uppercase tracking-wider">Reports To</th>
+                  <th className="text-left px-4 py-3.5 text-xs font-semibold text-gray-500 uppercase tracking-wider">Status</th>
+                  <th className="text-right px-4 py-3.5 text-xs font-semibold text-gray-500 uppercase tracking-wider">Actions</th>
                 </tr>
-              ))}
-              {employees.length === 0 && (
-                <tr><td colSpan={8} className="text-center py-12 text-gray-400">No employees found</td></tr>
-              )}
-            </tbody>
-          </table>
+              </thead>
+              <tbody className="divide-y divide-gray-100">
+                {paginatedData.map((emp) => (
+                  <tr key={emp._id} className="hover:bg-primary-50/40 transition-colors duration-150">
+                    <td className="font-semibold text-gray-900">
+                      <div className="flex items-center gap-2.5">
+                        <div className="w-8 h-8 gradient-primary rounded-lg flex items-center justify-center shadow-sm">
+                          <span className="text-xs font-bold text-white">{emp.name.charAt(0).toUpperCase()}</span>
+                        </div>
+                        {emp.name}
+                      </div>
+                    </td>
+                    <td className="text-gray-600">{emp.email}</td>
+                    <td className="text-gray-600">{emp.designation || '-'}</td>
+                    <td className="text-gray-600">{emp.department || '-'}</td>
+                    <td className="text-center">
+                      {emp.isLead ? (
+                        <span className="badge bg-primary-50 text-primary-700">Lead</span>
+                      ) : (
+                        <span className="text-gray-300">-</span>
+                      )}
+                    </td>
+                    <td className="text-gray-600">{emp.defaultLeadId?.name || '-'}</td>
+                    <td>
+                      <span className={`badge ${emp.status === 'active' ? 'bg-emerald-50 text-emerald-700' : 'bg-gray-100 text-gray-600'}`}>
+                        {emp.status}
+                      </span>
+                    </td>
+                    <td className="text-right">
+                      <div className="flex items-center justify-end gap-1">
+                        {hasPermission('employees:update') && (
+                          <button onClick={() => openEdit(emp)} className="p-2 text-gray-400 hover:text-primary-600 rounded-xl hover:bg-primary-50 transition-all">
+                            <Pencil className="w-4 h-4" />
+                          </button>
+                        )}
+                        {hasPermission('employees:update') && (
+                          <button onClick={() => toggleStatus(emp._id)}
+                            className={`p-2 rounded-xl transition-all ${
+                              emp.status === 'active' ? 'text-gray-400 hover:text-red-600 hover:bg-red-50' : 'text-gray-400 hover:text-green-600 hover:bg-green-50'
+                            }`}
+                            title={emp.status === 'active' ? 'Deactivate' : 'Activate'}>
+                            {emp.status === 'active' ? <PowerOff className="w-4 h-4" /> : <Power className="w-4 h-4" />}
+                          </button>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+                {paginatedData.length === 0 && !loading && (
+                  <tr><td colSpan={8} className="text-center py-12 text-gray-400">No employees found</td></tr>
+                )}
+              </tbody>
+            </table>
+          )}
         </div>
+        <Pagination
+          currentPage={currentPage}
+          totalPages={totalPages}
+          totalItems={totalItems}
+          pageSize={pageSize}
+          onPageChange={setCurrentPage}
+          onPageSizeChange={setPageSize}
+        />
       </div>
 
       {showModal && (

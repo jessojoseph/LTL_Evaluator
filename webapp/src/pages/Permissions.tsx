@@ -3,6 +3,9 @@ import { permissionApi } from '../api/client';
 import { useAuth } from '../context/AuthContext';
 import type { Permission } from '../types';
 import { Key, Search, Plus, Pencil, X, Power, PowerOff } from 'lucide-react';
+import { TableSkeleton } from '../components/Loader';
+import Pagination from '../components/Pagination';
+import { usePagination } from '../hooks/usePagination';
 
 const PERMISSION_MODULES = [
   'Employees', 'Project Leads', 'Projects', 'Weeks',
@@ -17,9 +20,42 @@ export default function Permissions() {
   const [showModal, setShowModal] = useState(false);
   const [editing, setEditing] = useState<Permission | null>(null);
   const [form, setForm] = useState({ name: '', label: '', description: '', module: 'Employees', status: 'active' });
+  const [loading, setLoading] = useState(true);
 
-  const load = () => { permissionApi.getAll().then(({ data }) => setPermissions(data.permissions)); };
+  const load = async () => {
+    setLoading(true);
+    try {
+      const { data } = await permissionApi.getAll();
+      setPermissions(data.permissions);
+    } finally {
+      setLoading(false);
+    }
+  };
   useEffect(() => { load(); }, []);
+
+  const modules = [...new Set(permissions.map((p) => p.module))].sort();
+
+  const filtered = permissions.filter((p) => {
+    const matchesSearch = !search || p.label.toLowerCase().includes(search.toLowerCase()) || p.name.toLowerCase().includes(search.toLowerCase());
+    const matchesModule = !filterModule || p.module === filterModule;
+    return matchesSearch && matchesModule;
+  });
+
+  const {
+    paginatedData,
+    totalItems,
+    currentPage,
+    totalPages,
+    pageSize,
+    setCurrentPage,
+    setPageSize,
+    goToFirstPage,
+  } = usePagination({
+    data: filtered,
+    pageSize: 12,
+  });
+
+  useEffect(() => { goToFirstPage(); }, [search, filterModule]);
 
   const openCreate = () => { setEditing(null); setForm({ name: '', label: '', description: '', module: 'Employees', status: 'active' }); setShowModal(true); };
   const openEdit = (p: Permission) => { setEditing(p); setForm({ name: p.name, label: p.label, description: p.description || '', module: p.module, status: p.status }); setShowModal(true); };
@@ -35,14 +71,6 @@ export default function Permissions() {
     await permissionApi.toggleStatus(id);
     load();
   };
-
-  const modules = [...new Set(permissions.map((p) => p.module))].sort();
-
-  const filtered = permissions.filter((p) => {
-    const matchesSearch = !search || p.label.toLowerCase().includes(search.toLowerCase()) || p.name.toLowerCase().includes(search.toLowerCase());
-    const matchesModule = !filterModule || p.module === filterModule;
-    return matchesSearch && matchesModule;
-  });
 
   if (!hasPermission('permissions:read')) {
     return <div className="text-center py-12 text-gray-400">You don't have permission to view this page.</div>;
@@ -76,47 +104,73 @@ export default function Permissions() {
         </select>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {filtered.map((perm) => (
-          <div key={perm._id} className={`card-hover p-4 ${perm.status === 'inactive' ? 'opacity-60' : ''}`}>
-            <div className="flex items-start justify-between gap-3">
-              <div className="flex items-start gap-3 min-w-0">
-                <div className="w-8 h-8 bg-primary-50 rounded-xl flex items-center justify-center flex-shrink-0">
-                  <Key className="w-4 h-4 text-primary-600" />
+      {loading ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <div key={i} className="card p-4 animate-pulse">
+              <div className="flex items-start gap-3">
+                <div className="w-8 h-8 bg-gray-100 rounded-xl" />
+                <div className="flex-1 space-y-2">
+                  <div className="h-4 bg-gray-100 rounded-lg w-2/3" />
+                  <div className="h-3 bg-gray-100 rounded-lg w-1/2" />
+                  <div className="h-3 bg-gray-100 rounded-lg w-1/3" />
                 </div>
-                <div className="min-w-0">
-                  <p className="font-semibold text-sm text-gray-900">{perm.label}</p>
-                  <p className="text-xs text-gray-500 mt-0.5 font-mono">{perm.name}</p>
-                  <p className="text-xs text-gray-400 mt-1">{perm.description}</p>
-                  <div className="flex flex-wrap items-center gap-1 mt-2">
-                    <span className="badge bg-gray-100 text-gray-600 text-[10px]">{perm.module}</span>
-                    {perm.isSystem && <span className="badge bg-purple-50 text-purple-700 text-[10px]">System</span>}
-                    <span className={`badge text-[10px] ${perm.status === 'active' ? 'bg-emerald-50 text-emerald-700' : 'bg-gray-100 text-gray-500'}`}>{perm.status}</span>
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {paginatedData.map((perm) => (
+              <div key={perm._id} className={`card-hover p-4 ${perm.status === 'inactive' ? 'opacity-60' : ''}`}>
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex items-start gap-3 min-w-0">
+                    <div className="w-8 h-8 bg-primary-50 rounded-xl flex items-center justify-center flex-shrink-0">
+                      <Key className="w-4 h-4 text-primary-600" />
+                    </div>
+                    <div className="min-w-0">
+                      <p className="font-semibold text-sm text-gray-900">{perm.label}</p>
+                      <p className="text-xs text-gray-500 mt-0.5 font-mono">{perm.name}</p>
+                      <p className="text-xs text-gray-400 mt-1">{perm.description}</p>
+                      <div className="flex flex-wrap items-center gap-1 mt-2">
+                        <span className="badge bg-gray-100 text-gray-600 text-[10px]">{perm.module}</span>
+                        {perm.isSystem && <span className="badge bg-purple-50 text-purple-700 text-[10px]">System</span>}
+                        <span className={`badge text-[10px] ${perm.status === 'active' ? 'bg-emerald-50 text-emerald-700' : 'bg-gray-100 text-gray-500'}`}>{perm.status}</span>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-1 flex-shrink-0">
+                    {hasPermission('permissions:update') && !perm.isSystem && (
+                      <button onClick={() => openEdit(perm)} className="p-1.5 text-gray-400 hover:text-primary-600 rounded-lg hover:bg-primary-50 transition-all"><Pencil className="w-3.5 h-3.5" /></button>
+                    )}
+                    {hasPermission('permissions:update') && (
+                      <button onClick={() => toggleStatus(perm._id)}
+                        className={`p-1.5 rounded-lg transition-all ${
+                          perm.status === 'active' ? 'text-gray-400 hover:text-red-600 hover:bg-red-50' : 'text-gray-400 hover:text-green-600 hover:bg-green-50'
+                        }`}
+                        title={perm.status === 'active' ? 'Deactivate' : 'Activate'}
+                        disabled={perm.isSystem && perm.status === 'active'}>
+                        {perm.status === 'active' ? <PowerOff className="w-3.5 h-3.5" /> : <Power className="w-3.5 h-3.5" />}
+                      </button>
+                    )}
                   </div>
                 </div>
               </div>
-              <div className="flex items-center gap-1 flex-shrink-0">
-                {hasPermission('permissions:update') && !perm.isSystem && (
-                  <button onClick={() => openEdit(perm)} className="p-1.5 text-gray-400 hover:text-primary-600 rounded-lg hover:bg-primary-50 transition-all"><Pencil className="w-3.5 h-3.5" /></button>
-                )}
-                {hasPermission('permissions:update') && (
-                  <button onClick={() => toggleStatus(perm._id)}
-                    className={`p-1.5 rounded-lg transition-all ${
-                      perm.status === 'active' ? 'text-gray-400 hover:text-red-600 hover:bg-red-50' : 'text-gray-400 hover:text-green-600 hover:bg-green-50'
-                    }`}
-                    title={perm.status === 'active' ? 'Deactivate' : 'Activate'}
-                    disabled={perm.isSystem && perm.status === 'active'}>
-                    {perm.status === 'active' ? <PowerOff className="w-3.5 h-3.5" /> : <Power className="w-3.5 h-3.5" />}
-                  </button>
-                )}
-              </div>
-            </div>
+            ))}
           </div>
-        ))}
-      </div>
-
-      {filtered.length === 0 && (
-        <div className="text-center py-12 text-gray-400">No permissions found</div>
+          {paginatedData.length === 0 && !loading && (
+            <div className="text-center py-12 text-gray-400">No permissions found</div>
+          )}
+          <Pagination
+            currentPage={currentPage}
+            totalPages={totalPages}
+            totalItems={totalItems}
+            pageSize={pageSize}
+            onPageChange={setCurrentPage}
+            onPageSizeChange={setPageSize}
+          />
+        </>
       )}
 
       {showModal && (

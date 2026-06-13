@@ -3,6 +3,9 @@ import { allocationApi, weekApi, employeeApi, projectApi } from '../api/client';
 import { useAuth } from '../context/AuthContext';
 import type { Allocation, Week, Employee, Project } from '../types';
 import { Plus, Pencil, AlertTriangle, X, Power, PowerOff, FileSpreadsheet } from 'lucide-react';
+import { TableSkeleton } from '../components/Loader';
+import Pagination from '../components/Pagination';
+import { usePagination } from '../hooks/usePagination';
 
 const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 
@@ -20,6 +23,8 @@ export default function Allocations() {
   const [editing, setEditing] = useState<Allocation | null>(null);
   const [warning, setWarning] = useState('');
   const [form, setForm] = useState({ weekId: '', projectLeadId: '', projectId: '', employeeId: '', allocatedDays: '0', extraHours: '0', remarks: '' });
+  const [loading, setLoading] = useState(false);
+  const [tableLoading, setTableLoading] = useState(false);
 
   const years = [...new Set(weeks.map((w) => new Date(w.startDate).getFullYear()))].sort((a, b) => b - a);
   const monthsInYear = selectedYear
@@ -49,25 +54,51 @@ export default function Allocations() {
   }, [weeks]);
 
   const load = async () => {
-    const wRes = await weekApi.getAll();
-    setWeeks(wRes.data.weeks);
-    const [eRes, lRes, pRes] = await Promise.all([
-      employeeApi.getAll({ status: 'active' }),
-      employeeApi.getAll({ isLead: 'true', status: 'active' }),
-      projectApi.getAll({ status: 'active' }),
-    ]);
-    setEmployees(eRes.data.employees);
-    setLeads(lRes.data.employees);
-    setProjects(pRes.data.projects);
+    setLoading(true);
+    try {
+      const wRes = await weekApi.getAll();
+      setWeeks(wRes.data.weeks);
+      const [eRes, lRes, pRes] = await Promise.all([
+        employeeApi.getAll({ status: 'active' }),
+        employeeApi.getAll({ isLead: 'true', status: 'active' }),
+        projectApi.getAll({ status: 'active' }),
+      ]);
+      setEmployees(eRes.data.employees);
+      setLeads(lRes.data.employees);
+      setProjects(pRes.data.projects);
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => { load(); }, []);
 
   useEffect(() => {
     if (selectedWeek) {
-      allocationApi.getAll({ weekId: selectedWeek }).then(({ data }) => setAllocations(data.allocations));
+      setTableLoading(true);
+      allocationApi.getAll({ weekId: selectedWeek }).then(({ data }) => {
+        setAllocations(data.allocations);
+        setTableLoading(false);
+      });
+    } else {
+      setAllocations([]);
     }
   }, [selectedWeek]);
+
+  const {
+    paginatedData,
+    totalItems,
+    currentPage,
+    totalPages,
+    pageSize,
+    setCurrentPage,
+    setPageSize,
+  } = usePagination({
+    data: allocations,
+    pageSize: 10,
+    searchFields: ['remarks'],
+    searchQuery: '',
+  });
 
   const openCreate = () => {
     setEditing(null);
@@ -163,53 +194,65 @@ export default function Allocations() {
 
       <div className="card overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="table-modern">
-            <thead>
-              <tr className="bg-gray-50/80 border-b border-gray-100">
-                <th className="text-left px-4 py-3.5 text-xs font-semibold text-gray-500 uppercase tracking-wider">Lead</th>
-                <th className="text-left px-4 py-3.5 text-xs font-semibold text-gray-500 uppercase tracking-wider">Project</th>
-                <th className="text-left px-4 py-3.5 text-xs font-semibold text-gray-500 uppercase tracking-wider">Employee</th>
-                <th className="text-center px-4 py-3.5 text-xs font-semibold text-gray-500 uppercase tracking-wider">Days</th>
-                <th className="text-center px-4 py-3.5 text-xs font-semibold text-gray-500 uppercase tracking-wider">Extra Hrs</th>
-                <th className="text-center px-4 py-3.5 text-xs font-semibold text-gray-500 uppercase tracking-wider">WH</th>
-                <th className="text-right px-4 py-3.5 text-xs font-semibold text-gray-500 uppercase tracking-wider">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-100">
-              {allocations.map((a) => (
-                <tr key={a._id} className="hover:bg-primary-50/40 transition-colors duration-150">
-                  <td className="text-gray-900 font-medium">{a.projectLeadId?.name}</td>
-                  <td className="text-gray-900">{a.projectId?.name}</td>
-                  <td className="text-gray-900">{a.employeeId?.name}</td>
-                  <td className="text-center text-gray-600">{a.allocatedDays}</td>
-                  <td className="text-center text-gray-600">{a.extraHours}</td>
-                  <td className="text-center font-semibold text-primary-700">{a.allocatedWH}</td>
-                  <td className="text-right">
-                    <div className="flex items-center justify-end gap-1">
-                      {hasPermission('allocations:update') && (
-                        <button onClick={() => openEdit(a)} className="p-2 text-gray-400 hover:text-primary-600 rounded-xl hover:bg-primary-50 transition-all duration-200">
-                          <Pencil className="w-4 h-4" />
-                        </button>
-                      )}
-                      {hasPermission('allocations:update') && (
-                        <button onClick={() => toggleStatus(a._id)}
-                          className={`p-2 rounded-xl transition-all duration-200 ${
-                            a.status === 'active' ? 'text-gray-400 hover:text-red-600 hover:bg-red-50' : 'text-gray-400 hover:text-green-600 hover:bg-green-50'
-                          }`}
-                          title={a.status === 'active' ? 'Deactivate' : 'Activate'}>
-                          {a.status === 'active' ? <PowerOff className="w-4 h-4" /> : <Power className="w-4 h-4" />}
-                        </button>
-                      )}
-                    </div>
-                  </td>
+          {tableLoading ? (
+            <TableSkeleton rows={5} cols={7} />
+          ) : (
+            <table className="table-modern">
+              <thead>
+                <tr className="bg-gray-50/80 border-b border-gray-100">
+                  <th className="text-left px-4 py-3.5 text-xs font-semibold text-gray-500 uppercase tracking-wider">Lead</th>
+                  <th className="text-left px-4 py-3.5 text-xs font-semibold text-gray-500 uppercase tracking-wider">Project</th>
+                  <th className="text-left px-4 py-3.5 text-xs font-semibold text-gray-500 uppercase tracking-wider">Employee</th>
+                  <th className="text-center px-4 py-3.5 text-xs font-semibold text-gray-500 uppercase tracking-wider">Days</th>
+                  <th className="text-center px-4 py-3.5 text-xs font-semibold text-gray-500 uppercase tracking-wider">Extra Hrs</th>
+                  <th className="text-center px-4 py-3.5 text-xs font-semibold text-gray-500 uppercase tracking-wider">WH</th>
+                  <th className="text-right px-4 py-3.5 text-xs font-semibold text-gray-500 uppercase tracking-wider">Actions</th>
                 </tr>
-              ))}
-              {allocations.length === 0 && (
-                <tr><td colSpan={7} className="text-center py-12 text-gray-400">{selectedWeek ? 'No allocations for this week' : 'Select a week to view allocations'}</td></tr>
-              )}
-            </tbody>
-          </table>
+              </thead>
+              <tbody className="divide-y divide-gray-100">
+                {paginatedData.map((a) => (
+                  <tr key={a._id} className="hover:bg-primary-50/40 transition-colors duration-150">
+                    <td className="text-gray-900 font-medium">{a.projectLeadId?.name}</td>
+                    <td className="text-gray-900">{a.projectId?.name}</td>
+                    <td className="text-gray-900">{a.employeeId?.name}</td>
+                    <td className="text-center text-gray-600">{a.allocatedDays}</td>
+                    <td className="text-center text-gray-600">{a.extraHours}</td>
+                    <td className="text-center font-semibold text-primary-700">{a.allocatedWH}</td>
+                    <td className="text-right">
+                      <div className="flex items-center justify-end gap-1">
+                        {hasPermission('allocations:update') && (
+                          <button onClick={() => openEdit(a)} className="p-2 text-gray-400 hover:text-primary-600 rounded-xl hover:bg-primary-50 transition-all duration-200">
+                            <Pencil className="w-4 h-4" />
+                          </button>
+                        )}
+                        {hasPermission('allocations:update') && (
+                          <button onClick={() => toggleStatus(a._id)}
+                            className={`p-2 rounded-xl transition-all duration-200 ${
+                              a.status === 'active' ? 'text-gray-400 hover:text-red-600 hover:bg-red-50' : 'text-gray-400 hover:text-green-600 hover:bg-green-50'
+                            }`}
+                            title={a.status === 'active' ? 'Deactivate' : 'Activate'}>
+                            {a.status === 'active' ? <PowerOff className="w-4 h-4" /> : <Power className="w-4 h-4" />}
+                          </button>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+                {paginatedData.length === 0 && !tableLoading && (
+                  <tr><td colSpan={7} className="text-center py-12 text-gray-400">{selectedWeek ? 'No allocations for this week' : 'Select a week to view allocations'}</td></tr>
+                )}
+              </tbody>
+            </table>
+          )}
         </div>
+        <Pagination
+          currentPage={currentPage}
+          totalPages={totalPages}
+          totalItems={totalItems}
+          pageSize={pageSize}
+          onPageChange={setCurrentPage}
+          onPageSizeChange={setPageSize}
+        />
       </div>
 
       {week && (

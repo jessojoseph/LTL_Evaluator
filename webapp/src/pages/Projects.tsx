@@ -3,6 +3,9 @@ import { projectApi, employeeApi } from '../api/client';
 import { useAuth } from '../context/AuthContext';
 import type { Project, Employee } from '../types';
 import { Plus, Pencil, Search, X, Power, PowerOff, FolderKanban } from 'lucide-react';
+import { TableSkeleton } from '../components/Loader';
+import Pagination from '../components/Pagination';
+import { usePagination } from '../hooks/usePagination';
 
 export default function Projects() {
   const { hasPermission } = useAuth();
@@ -12,12 +15,40 @@ export default function Projects() {
   const [showModal, setShowModal] = useState(false);
   const [editing, setEditing] = useState<Project | null>(null);
   const [form, setForm] = useState({ name: '', projectLeadId: '', clientName: '', projectType: '', status: 'active', priority: '' });
+  const [loading, setLoading] = useState(true);
 
-  const load = () => {
-    projectApi.getAll({ search }).then(({ data }) => setProjects(data.projects));
-    employeeApi.getAll({ isLead: 'true', status: 'active' }).then(({ data }) => setLeads(data.employees));
+  const load = async () => {
+    setLoading(true);
+    try {
+      const [pRes, lRes] = await Promise.all([
+        projectApi.getAll({ search }),
+        employeeApi.getAll({ isLead: 'true', status: 'active' }),
+      ]);
+      setProjects(pRes.data.projects);
+      setLeads(lRes.data.employees);
+    } finally {
+      setLoading(false);
+    }
   };
+
   useEffect(() => { load(); }, [search]);
+
+  const {
+    paginatedData,
+    totalItems,
+    currentPage,
+    totalPages,
+    pageSize,
+    setCurrentPage,
+    setPageSize,
+    goToFirstPage,
+  } = usePagination({
+    data: projects,
+    pageSize: 10,
+  });
+
+  // Reset to first page when search changes
+  useEffect(() => { goToFirstPage(); }, [search]);
 
   const openCreate = () => { setEditing(null); setForm({ name: '', projectLeadId: '', clientName: '', projectType: '', status: 'active', priority: '' }); setShowModal(true); };
   const openEdit = (p: Project) => { setEditing(p); setForm({ name: p.name, projectLeadId: p.projectLeadId._id, clientName: p.clientName || '', projectType: p.projectType || '', status: p.status, priority: p.priority || '' }); setShowModal(true); };
@@ -57,44 +88,56 @@ export default function Projects() {
 
       <div className="card overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="table-modern">
-            <thead><tr className="bg-gray-50/80 border-b border-gray-100">
-              <th className="text-left px-4 py-3.5 text-xs font-semibold text-gray-500 uppercase tracking-wider">Name</th>
-              <th className="text-left px-4 py-3.5 text-xs font-semibold text-gray-500 uppercase tracking-wider">Lead</th>
-              <th className="text-left px-4 py-3.5 text-xs font-semibold text-gray-500 uppercase tracking-wider">Client</th>
-              <th className="text-left px-4 py-3.5 text-xs font-semibold text-gray-500 uppercase tracking-wider">Type</th>
-              <th className="text-left px-4 py-3.5 text-xs font-semibold text-gray-500 uppercase tracking-wider">Priority</th>
-              <th className="text-left px-4 py-3.5 text-xs font-semibold text-gray-500 uppercase tracking-wider">Status</th>
-              <th className="text-right px-4 py-3.5 text-xs font-semibold text-gray-500 uppercase tracking-wider">Actions</th>
-            </tr></thead>
-            <tbody className="divide-y divide-gray-100">
-              {projects.map((p) => (
-                <tr key={p._id} className="hover:bg-primary-50/40 transition-colors duration-150">
-                  <td className="font-semibold text-gray-900">{p.name}</td>
-                  <td className="text-gray-600">{p.projectLeadId?.name || '-'}</td>
-                  <td className="text-gray-600">{p.clientName || '-'}</td>
-                  <td className="text-gray-600">{p.projectType || '-'}</td>
-                  <td><span className={`badge ${p.priority === 'high' ? 'bg-red-50 text-red-700' : p.priority === 'medium' ? 'bg-yellow-50 text-yellow-700' : 'bg-gray-100 text-gray-600'}`}>{p.priority || '-'}</span></td>
-                  <td><span className={`badge ${statusColors[p.status] || 'bg-gray-100 text-gray-600'}`}>{p.status}</span></td>
-                  <td className="text-right">
-                    <div className="flex items-center justify-end gap-1">
-                      {hasPermission('projects:update') && <button onClick={() => openEdit(p)} className="p-2 text-gray-400 hover:text-primary-600 rounded-xl hover:bg-primary-50 transition-all"><Pencil className="w-4 h-4" /></button>}
-                      {hasPermission('projects:update') && (
-                        <button onClick={() => toggleStatus(p._id)}
-                          className={`p-2 rounded-xl transition-all ${
-                            p.status === 'active' ? 'text-gray-400 hover:text-red-600 hover:bg-red-50' : 'text-gray-400 hover:text-green-600 hover:bg-green-50'
-                          }`} title={p.isActive !== false ? 'Deactivate' : 'Activate'}>
-                          {p.isActive !== false ? <PowerOff className="w-4 h-4" /> : <Power className="w-4 h-4" />}
-                        </button>
-                      )}
-                    </div>
-                  </td>
-                </tr>
-              ))}
-              {projects.length === 0 && <tr><td colSpan={7} className="text-center py-12 text-gray-400">No projects found</td></tr>}
-            </tbody>
-          </table>
+          {loading ? (
+            <TableSkeleton rows={5} cols={7} />
+          ) : (
+            <table className="table-modern">
+              <thead><tr className="bg-gray-50/80 border-b border-gray-100">
+                <th className="text-left px-4 py-3.5 text-xs font-semibold text-gray-500 uppercase tracking-wider">Name</th>
+                <th className="text-left px-4 py-3.5 text-xs font-semibold text-gray-500 uppercase tracking-wider">Lead</th>
+                <th className="text-left px-4 py-3.5 text-xs font-semibold text-gray-500 uppercase tracking-wider">Client</th>
+                <th className="text-left px-4 py-3.5 text-xs font-semibold text-gray-500 uppercase tracking-wider">Type</th>
+                <th className="text-left px-4 py-3.5 text-xs font-semibold text-gray-500 uppercase tracking-wider">Priority</th>
+                <th className="text-left px-4 py-3.5 text-xs font-semibold text-gray-500 uppercase tracking-wider">Status</th>
+                <th className="text-right px-4 py-3.5 text-xs font-semibold text-gray-500 uppercase tracking-wider">Actions</th>
+              </tr></thead>
+              <tbody className="divide-y divide-gray-100">
+                {paginatedData.map((p) => (
+                  <tr key={p._id} className="hover:bg-primary-50/40 transition-colors duration-150">
+                    <td className="font-semibold text-gray-900">{p.name}</td>
+                    <td className="text-gray-600">{p.projectLeadId?.name || '-'}</td>
+                    <td className="text-gray-600">{p.clientName || '-'}</td>
+                    <td className="text-gray-600">{p.projectType || '-'}</td>
+                    <td><span className={`badge ${p.priority === 'high' ? 'bg-red-50 text-red-700' : p.priority === 'medium' ? 'bg-yellow-50 text-yellow-700' : 'bg-gray-100 text-gray-600'}`}>{p.priority || '-'}</span></td>
+                    <td><span className={`badge ${statusColors[p.status] || 'bg-gray-100 text-gray-600'}`}>{p.status}</span></td>
+                    <td className="text-right">
+                      <div className="flex items-center justify-end gap-1">
+                        {hasPermission('projects:update') && <button onClick={() => openEdit(p)} className="p-2 text-gray-400 hover:text-primary-600 rounded-xl hover:bg-primary-50 transition-all"><Pencil className="w-4 h-4" /></button>}
+                        {hasPermission('projects:update') && (
+                          <button onClick={() => toggleStatus(p._id)}
+                            className={`p-2 rounded-xl transition-all ${
+                              p.status === 'active' ? 'text-gray-400 hover:text-red-600 hover:bg-red-50' : 'text-gray-400 hover:text-green-600 hover:bg-green-50'
+                            }`} title={p.isActive !== false ? 'Deactivate' : 'Activate'}>
+                            {p.isActive !== false ? <PowerOff className="w-4 h-4" /> : <Power className="w-4 h-4" />}
+                          </button>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+                {paginatedData.length === 0 && !loading && <tr><td colSpan={7} className="text-center py-12 text-gray-400">No projects found</td></tr>}
+              </tbody>
+            </table>
+          )}
         </div>
+        <Pagination
+          currentPage={currentPage}
+          totalPages={totalPages}
+          totalItems={totalItems}
+          pageSize={pageSize}
+          onPageChange={setCurrentPage}
+          onPageSizeChange={setPageSize}
+        />
       </div>
 
       {showModal && (

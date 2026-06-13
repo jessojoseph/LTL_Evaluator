@@ -2,6 +2,9 @@ import { useEffect, useState } from 'react';
 import { reportApi, weekApi, exportApi, downloadExcel } from '../api/client';
 import type { Week, EmployeeUtilization, ProjectWiseReport, LeadSummary, FreeResource, OverbookedResource, EmployeeWiseItem } from '../types';
 import { Download, Search, ChevronDown, ChevronUp, BarChart3 } from 'lucide-react';
+import { Loader } from '../components/Loader';
+import Pagination from '../components/Pagination';
+import { usePagination } from '../hooks/usePagination';
 
 const TABS = [
   { key: 'utilization', label: 'Employee Utilization' },
@@ -112,7 +115,12 @@ export default function Reports() {
     (r) => !search || r.employee.toLowerCase().includes(search.toLowerCase()) || r.lead.toLowerCase().includes(search.toLowerCase())
   );
 
-  const activeTabLabel = TABS.find((t) => t.key === activeTab)?.label || 'Reports';
+  // Pagination hooks for each tab's data
+  const utilPagination = usePagination({ data: filteredUtilData, pageSize: 10 });
+  const projPagination = usePagination({ data: projData, pageSize: 10 });
+  const leadPagination = usePagination({ data: leadData, pageSize: 10 });
+  const freePagination = usePagination({ data: freeData, pageSize: 10 });
+  const overPagination = usePagination({ data: overData, pageSize: 10 });
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -199,23 +207,73 @@ export default function Reports() {
 
       {loading ? (
         <div className="flex items-center justify-center h-64">
-          <div className="flex flex-col items-center gap-3">
-            <div className="w-8 h-8 border-4 border-primary-200 border-t-primary-600 rounded-full animate-spin" />
-            <p className="text-sm text-gray-400">Loading...</p>
-          </div>
+          <Loader text="Loading report data..." />
         </div>
       ) : (
-        <div className="card overflow-hidden">
-          <div className="overflow-x-auto">
-            {activeTab === 'utilization' && <UtilizationTable data={filteredUtilData} />}
-            {activeTab === 'project-wise' && <ProjectWiseTable data={projData} />}
-            {activeTab === 'lead-summary' && <LeadSummaryTable data={leadData} />}
-            {activeTab === 'free-resources' && <FreeResourcesTable data={freeData} />}
-            {activeTab === 'overbooked' && <OverbookedTable data={overData} />}
-            {activeTab === 'employee-wise' && <EmployeeWiseTable data={empWiseData} expandedEmp={expandedEmp} setExpandedEmp={setExpandedEmp} />}
-            {activeTab === 'comparison' && <ComparisonTable data={compData} />}
+        <>
+          <div className="card overflow-hidden">
+            <div className="overflow-x-auto">
+              {activeTab === 'utilization' && <UtilizationTable data={utilPagination.paginatedData} />}
+              {activeTab === 'project-wise' && <ProjectWiseTable data={projPagination.paginatedData} />}
+              {activeTab === 'lead-summary' && <LeadSummaryTable data={leadPagination.paginatedData} />}
+              {activeTab === 'free-resources' && <FreeResourcesTable data={freePagination.paginatedData} />}
+              {activeTab === 'overbooked' && <OverbookedTable data={overPagination.paginatedData} />}
+              {activeTab === 'employee-wise' && <EmployeeWiseTable data={empWiseData} expandedEmp={expandedEmp} setExpandedEmp={setExpandedEmp} />}
+              {activeTab === 'comparison' && <ComparisonTable data={compData} />}
+            </div>
+            {/* Pagination for tabular reports */}
+            {activeTab === 'utilization' && (
+              <Pagination
+                currentPage={utilPagination.currentPage}
+                totalPages={utilPagination.totalPages}
+                totalItems={utilPagination.totalItems}
+                pageSize={utilPagination.pageSize}
+                onPageChange={utilPagination.setCurrentPage}
+                onPageSizeChange={utilPagination.setPageSize}
+              />
+            )}
+            {activeTab === 'project-wise' && (
+              <Pagination
+                currentPage={projPagination.currentPage}
+                totalPages={projPagination.totalPages}
+                totalItems={projPagination.totalItems}
+                pageSize={projPagination.pageSize}
+                onPageChange={projPagination.setCurrentPage}
+                onPageSizeChange={projPagination.setPageSize}
+              />
+            )}
+            {activeTab === 'lead-summary' && (
+              <Pagination
+                currentPage={leadPagination.currentPage}
+                totalPages={leadPagination.totalPages}
+                totalItems={leadPagination.totalItems}
+                pageSize={leadPagination.pageSize}
+                onPageChange={leadPagination.setCurrentPage}
+                onPageSizeChange={leadPagination.setPageSize}
+              />
+            )}
+            {activeTab === 'free-resources' && (
+              <Pagination
+                currentPage={freePagination.currentPage}
+                totalPages={freePagination.totalPages}
+                totalItems={freePagination.totalItems}
+                pageSize={freePagination.pageSize}
+                onPageChange={freePagination.setCurrentPage}
+                onPageSizeChange={freePagination.setPageSize}
+              />
+            )}
+            {activeTab === 'overbooked' && (
+              <Pagination
+                currentPage={overPagination.currentPage}
+                totalPages={overPagination.totalPages}
+                totalItems={overPagination.totalItems}
+                pageSize={overPagination.pageSize}
+                onPageChange={overPagination.setCurrentPage}
+                onPageSizeChange={overPagination.setPageSize}
+              />
+            )}
           </div>
-        </div>
+        </>
       )}
     </div>
   );
