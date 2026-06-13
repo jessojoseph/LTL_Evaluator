@@ -9,7 +9,7 @@ import { usePagination } from '../hooks/usePagination';
 
 export default function Leaves() {
   const { user, hasPermission } = useAuth();
-  const isAdmin = hasPermission('leaves:read');
+  const canReadAll = hasPermission('leaves:read');
   const canCreateAny = hasPermission('leaves:create');
   const canSelfServe = hasPermission('leaves:self');
   const canApprove = hasPermission('leaves:approve');
@@ -37,7 +37,7 @@ export default function Leaves() {
       if (statusFilter) params.status = statusFilter;
       if (typeFilter) params.type = typeFilter;
 
-      if (isAdmin) {
+      if (canReadAll) {
         const [lRes, eRes] = await Promise.all([
           leaveApi.getAll(params),
           employeeApi.getAll({ status: 'active' }),
@@ -113,7 +113,7 @@ export default function Leaves() {
 
     if (editing) {
       await leaveApi.update(editing._id, form);
-    } else if (isAdmin) {
+    } else if (canCreateAny) {
       const { data } = await leaveApi.create(form);
       if (data.lopWarning) setLopWarning(data.lopWarning);
     } else {
@@ -182,10 +182,10 @@ export default function Leaves() {
           </div>
           <div>
             <h1 className="text-xl font-bold text-gray-900">
-              {isAdmin ? 'Leave Requests' : 'My Leaves'}
+              {canReadAll ? 'Leave Requests' : 'My Leaves'}
             </h1>
             <p className="text-sm text-gray-500 mt-0.5">
-              {isAdmin ? 'Manage employee leave requests' : 'View and manage your leave requests'}
+              {canReadAll ? 'Manage employee leave requests' : 'View and manage your leave requests'}
             </p>
           </div>
         </div>
@@ -214,7 +214,7 @@ export default function Leaves() {
 
       {/* Filters */}
       <div className="flex flex-wrap items-center gap-3">
-        {isAdmin && (
+        {canReadAll && (
           <div className="relative flex-1 max-w-sm">
             <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
             <input
@@ -254,12 +254,12 @@ export default function Leaves() {
       <div className="card overflow-hidden">
         <div className="overflow-x-auto">
           {loading ? (
-            <TableSkeleton rows={5} cols={isAdmin ? 9 : 7} />
+            <TableSkeleton rows={5} cols={canReadAll ? 9 : 7} />
           ) : (
             <table className="table-modern">
               <thead>
                 <tr className="bg-gray-50/80 border-b border-gray-100">
-                  {isAdmin && (
+                  {canReadAll && (
                     <th className="text-left px-4 py-3.5 text-xs font-semibold text-gray-500 uppercase tracking-wider">Employee</th>
                   )}
                   <th className="text-left px-4 py-3.5 text-xs font-semibold text-gray-500 uppercase tracking-wider">Type</th>
@@ -268,7 +268,7 @@ export default function Leaves() {
                   <th className="text-left px-4 py-3.5 text-xs font-semibold text-gray-500 uppercase tracking-wider">Days</th>
                   <th className="text-left px-4 py-3.5 text-xs font-semibold text-gray-500 uppercase tracking-wider">Status</th>
                   <th className="text-left px-4 py-3.5 text-xs font-semibold text-gray-500 uppercase tracking-wider">LOP</th>
-                  {isAdmin && (
+                  {canReadAll && (
                     <th className="text-left px-4 py-3.5 text-xs font-semibold text-gray-500 uppercase tracking-wider">Approved By</th>
                   )}
                   <th className="text-right px-4 py-3.5 text-xs font-semibold text-gray-500 uppercase tracking-wider">Actions</th>
@@ -283,7 +283,7 @@ export default function Leaves() {
 
                   return (
                     <tr key={l._id} className="hover:bg-primary-50/40 transition-colors duration-150">
-                      {isAdmin && (
+                      {canReadAll && (
                         <td>
                           <div className="flex items-center gap-2">
                             <div className="w-8 h-8 bg-primary-100 text-primary-700 rounded-full flex items-center justify-center text-xs font-bold">
@@ -310,7 +310,7 @@ export default function Leaves() {
                           <span className="text-xs text-gray-300">—</span>
                         )}
                       </td>
-                      {isAdmin && (
+                      {canReadAll && (
                         <td className="text-gray-600 text-sm">{approverName}</td>
                       )}
                       <td className="text-right">
@@ -333,7 +333,7 @@ export default function Leaves() {
                               </button>
                             </>
                           )}
-                          {l.status === 'pending' && !isAdmin && canSelfServe && (
+                          {l.status === 'pending' && !canReadAll && canSelfServe && (
                             <button
                               onClick={() => handleCancelSelf(l._id)}
                               className="p-2 text-gray-400 hover:text-orange-600 rounded-xl hover:bg-orange-50 transition-all"
@@ -376,8 +376,8 @@ export default function Leaves() {
                 })}
                 {paginatedData.length === 0 && !loading && (
                   <tr>
-                    <td colSpan={isAdmin ? 9 : 7} className="text-center py-12 text-gray-400">
-                      {isAdmin ? 'No leave requests found' : 'You have no leave requests'}
+                    <td colSpan={canReadAll ? 9 : 7} className="text-center py-12 text-gray-400">
+                      {canReadAll ? 'No leave requests found' : 'You have no leave requests'}
                     </td>
                   </tr>
                 )}
@@ -416,7 +416,7 @@ export default function Leaves() {
                   {formError}
                 </div>
               )}
-              {isAdmin ? (
+              {canCreateAny ? (
                 <div>
                   <label className="label">Employee</label>
                   <select
