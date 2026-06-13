@@ -1,7 +1,9 @@
 import { useState, FormEvent } from 'react';
 import { Link } from 'react-router-dom';
 import { authApi } from '../api/client';
-import { BarChart3, Mail, ArrowLeft } from 'lucide-react';
+import { Mail, ArrowLeft } from 'lucide-react';
+import BrandLogo from '../components/BrandLogo';
+import { launcherIcon } from '../assets';
 
 export default function ForgotPassword() {
   const [email, setEmail] = useState('');
@@ -42,10 +44,8 @@ export default function ForgotPassword() {
           Back to Login
         </Link>
 
-        {/* Logo / Icon */}
-        <div className="w-14 h-14 bg-[#e8f3ee] rounded-2xl flex items-center justify-center mb-6 shrink-0 shadow-inner">
-          <BarChart3 className="w-7 h-7 text-[#0f5c3a]" />
-        </div>
+        {/* Brand Logo */}
+        <BrandLogo size="sm" showText={false} imageSrc={launcherIcon} className="mb-6" />
 
         {/* Heading */}
         <h2 className="text-2xl sm:text-3xl font-extrabold text-gray-900 tracking-tight mb-2">

@@ -2,9 +2,12 @@ import { useState, FormEvent } from 'react';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { 
-  BarChart3, Eye, EyeOff, Mail, Lock, 
+  Eye, EyeOff, Mail, Lock, BarChart3,
   Users, LineChart, Clock 
 } from 'lucide-react';
+import BrandLogo from '../components/BrandLogo';
+import BrandIllustration from '../components/BrandIllustration';
+import { launcherIcon } from '../assets';
 
 export default function Login() {
   const { login } = useAuth();
@@ -33,25 +36,17 @@ export default function Login() {
     }
   };
 
-
-
   return (
     <div className="min-h-screen grid grid-cols-1 lg:grid-cols-2 bg-[#f3f7f5]">
-      {/* Left Column - Marketing & Mockup Dashboard (Light Green Background) */}
+      {/* Left Column — Brand Showcase */}
       <div className="hidden lg:flex flex-col p-12 xl:p-16 bg-[#f3f7f5] border-r border-gray-150 relative overflow-hidden">
         {/* Subtle Background Waves */}
         <div className="absolute -top-40 -left-40 w-96 h-96 bg-gradient-to-br from-[#e8f3ee] to-transparent rounded-full opacity-60 filter blur-3xl pointer-events-none" />
         <div className="absolute -bottom-40 -right-20 w-96 h-96 bg-gradient-to-tr from-[#e8f3ee] to-transparent rounded-full opacity-60 filter blur-3xl pointer-events-none" />
 
-        {/* Top Header */}
-        <div className="flex items-center gap-3 relative z-10">
-          <div className="w-9 h-9 bg-[#0f5c3a] rounded-lg flex items-center justify-center text-white shrink-0 shadow-sm">
-            <BarChart3 className="w-5 h-5" />
-          </div>
-          <div className="leading-none">
-            <span className="font-bold text-gray-950 text-base tracking-tight block">AttendEase</span>
-            <span className="text-[10px] text-gray-400 font-semibold mt-0.5 block">Attendance made easy</span>
-          </div>
+        {/* Brand Logo */}
+        <div className="relative z-10">
+          <BrandLogo size="md" imageSrc={launcherIcon} />
         </div>
 
         {/* Content Block */}
@@ -73,61 +68,25 @@ export default function Login() {
             Streamline resource planning, track utilization, and optimize team capacity — all in one place.
           </p>
 
-          {/* Features Vertical List */}
-          <div className="flex flex-col gap-5 max-w-lg mt-2">
-            {/* Feature 1 */}
-            <div className="flex items-start gap-4">
-              <div className="w-10 h-10 rounded-full border border-gray-200 flex items-center justify-center text-[#0f5c3a] bg-white shrink-0 shadow-sm">
-                <Users className="w-5 h-5" />
-              </div>
-              <div className="pt-0.5">
-                <h3 className="text-xs sm:text-sm font-bold text-gray-800">Smart Capacity Planning</h3>
-                <p className="text-[11px] sm:text-xs text-gray-400 font-semibold mt-0.5">Plan resources effectively</p>
-              </div>
-            </div>
-            
-            {/* Feature 2 */}
-            <div className="flex items-start gap-4">
-              <div className="w-10 h-10 rounded-full border border-gray-200 flex items-center justify-center text-[#0f5c3a] bg-white shrink-0 shadow-sm">
-                <LineChart className="w-5 h-5" />
-              </div>
-              <div className="pt-0.5">
-                <h3 className="text-xs sm:text-sm font-bold text-gray-800">Resource Allocation</h3>
-                <p className="text-[11px] sm:text-xs text-gray-400 font-semibold mt-0.5">Assign the right people to the right projects</p>
-              </div>
-            </div>
-
-            {/* Feature 3 */}
-            <div className="flex items-start gap-4">
-              <div className="w-10 h-10 rounded-full border border-gray-200 flex items-center justify-center text-[#0f5c3a] bg-white shrink-0 shadow-sm">
-                <Clock className="w-5 h-5" />
-              </div>
-              <div className="pt-0.5">
-                <h3 className="text-xs sm:text-sm font-bold text-gray-800">Real-time Insights</h3>
-                <p className="text-[11px] sm:text-xs text-gray-400 font-semibold mt-0.5">Track utilization and performance</p>
-              </div>
-            </div>
+          {/* Dashboard Preview Illustration */}
+          <div className="mt-6">
+            <BrandIllustration className="max-w-lg" />
           </div>
         </div>
       </div>
 
-      {/* Right Column - Flat Login Container (White Background, NO CARD wrapper) */}
+      {/* Right Column — Login Form */}
       <div className="flex flex-col justify-between items-center p-8 sm:p-12 min-h-screen bg-white">
-        {/* Empty space/spacer to center the form card visually on desktop */}
         <div className="hidden lg:block h-6" />
 
-        {/* Mobile Logo Block */}
-        <div className="lg:hidden flex flex-col items-center mb-6">
-          <div className="w-10 h-10 bg-[#0f5c3a] rounded-lg flex items-center justify-center text-white shrink-0 shadow-sm">
-            <BarChart3 className="w-5.5 h-5.5" />
-          </div>
-          <h1 className="text-xl font-bold text-gray-900 mt-2">AttendEase</h1>
-          <p className="text-xs text-gray-400 font-medium mt-0.5">Attendance made easy</p>
+        {/* Mobile Brand Block */}
+        <div className="lg:hidden mb-6">
+          <BrandLogo size="sm" imageSrc={launcherIcon} />
         </div>
 
-        {/* Flat Form container (no border, no shadow, no bg) */}
+        {/* Login Form Container */}
         <div className="w-full max-w-[400px] flex flex-col items-center my-auto">
-          {/* Light Green Icon Container with dark green chart */}
+          {/* Brand Mark */}
           <div className="w-14 h-14 bg-[#e8f3ee] rounded-2xl flex items-center justify-center mb-6 shrink-0 transition-transform duration-300 hover:scale-105">
             <BarChart3 className="w-7 h-7 text-[#0f5c3a]" />
           </div>
@@ -151,7 +110,6 @@ export default function Login() {
 
           {/* Login Form */}
           <form onSubmit={handleSubmit} className="w-full flex flex-col gap-5">
-            {/* Email Address */}
             <div className="flex flex-col">
               <label className="text-xs font-semibold text-gray-700 mb-2 block" htmlFor="email">
                 Email address
@@ -173,7 +131,6 @@ export default function Login() {
               </div>
             </div>
 
-            {/* Password */}
             <div className="flex flex-col">
               <label className="text-xs font-semibold text-gray-700 mb-2 block" htmlFor="password">
                 Password
@@ -201,7 +158,6 @@ export default function Login() {
               </div>
             </div>
 
-            {/* Forgot Password aligned right */}
             <div className="flex justify-end -mt-2">
               <Link 
                 to="/forgot-password" 
@@ -211,7 +167,6 @@ export default function Login() {
               </Link>
             </div>
 
-            {/* Submit Button */}
             <button
               type="submit"
               disabled={loading}
@@ -234,7 +189,7 @@ export default function Login() {
           </form>
         </div>
 
-        {/* Centered Right Copyright Footer */}
+        {/* Footer */}
         <p className="mt-8 text-xs text-gray-400 font-semibold tracking-wide">
           © {new Date().getFullYear()} AttendEase. All rights reserved.
         </p>

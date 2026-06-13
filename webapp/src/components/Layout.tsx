@@ -3,9 +3,11 @@ import { NavLink, Outlet, useNavigate, useLocation } from 'react-router-dom';
 import {
   LayoutDashboard, Users, FolderKanban, Calendar,
   FileSpreadsheet, BarChart3, Shield, Key, UserCog, LogOut, Menu, X,
-  Fingerprint, Bell,
+  Bell,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import BrandLogo from './BrandLogo';
+import { launcherIcon } from '../assets';
 
 const navItems = [
   { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, permission: 'reports:read' },
@@ -50,15 +52,9 @@ export default function Layout() {
           shadow-lg lg:shadow-none
           ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}
       >
-        {/* Brand header */}
-        <div className="px-6 h-20 flex items-center gap-3 border-b border-gray-50">
-          <div className="w-10 h-10 bg-primary-50 rounded-xl flex items-center justify-center shadow-sm">
-            <Fingerprint className="w-6 h-6 text-primary-600" />
-          </div>
-          <div>
-            <span className="font-bold text-gray-950 text-base tracking-tight leading-none block">AttendEase</span>
-            <span className="text-[10px] text-gray-400 font-medium mt-0.5 block">Attendance made easy</span>
-          </div>
+        {/* Brand header with reusable logo */}
+        <div className="px-6 h-20 flex items-center border-b border-gray-50">
+          <BrandLogo size="sm" imageSrc={launcherIcon} />
         </div>
 
         {/* Navigation */}
@@ -85,12 +81,10 @@ export default function Layout() {
         {/* Bottom Callout Card */}
         <div className="p-4 border-t border-gray-50 mt-auto">
           <div className="bg-primary-50/40 rounded-2xl p-4 border border-primary-100/30 flex flex-col items-center text-center">
-            {/* Minimalist illustration overlay / charts icon */}
             <div className="relative w-16 h-12 mb-3 flex items-end justify-center gap-1.5">
               <div className="w-2.5 bg-primary-600/20 rounded-t-sm h-6"></div>
               <div className="w-2.5 bg-primary-600/50 rounded-t-sm h-9"></div>
               <div className="w-2.5 bg-primary-600 rounded-t-sm h-12"></div>
-              {/* Little circle outline */}
               <div className="absolute top-0 right-2 w-6 h-6 rounded-full border-2 border-primary-600/35 border-t-primary-600 animate-spin" style={{ animationDuration: '3s' }} />
             </div>
             <p className="text-xs font-semibold text-gray-800 mb-2 leading-relaxed">

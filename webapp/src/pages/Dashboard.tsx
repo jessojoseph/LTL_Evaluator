@@ -6,6 +6,8 @@ import {
   Calendar, Briefcase, Info,
 } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
+import { BrandMark } from '../components/BrandLogo';
+import { launcherIcon } from '../assets';
 
 const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 const COLORS = ['#0f5c3a', '#1a7a4c', '#34d399', '#6ee7b7', '#a7f3d0', '#0d4f31'];
@@ -135,9 +137,7 @@ export default function Dashboard() {
       {/* Date Pickers Selector Row */}
       <div className="flex items-center justify-between flex-wrap gap-4">
         <div className="flex items-center gap-3">
-          <div className="p-2.5 bg-primary-600 rounded-xl shadow-sm">
-            <BarChart3 className="w-5 h-5 text-white" />
-          </div>
+          <BrandMark size="sm" imageSrc={launcherIcon} />
           <div>
             <h1 className="text-xl font-bold text-gray-900">Dashboard</h1>
             <p className="text-sm text-gray-500 mt-0.5">
@@ -188,7 +188,7 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* KPI Cards Grid — with trend data removed (was hardcoded/placeholder), real data only */}
+      {/* KPI Cards Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-7 gap-4">
         {kpiCards.map((kpi) => (
           <StatCard key={kpi.label} {...kpi} />
