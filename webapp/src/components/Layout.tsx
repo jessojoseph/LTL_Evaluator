@@ -19,6 +19,13 @@ const navItems = [
   { to: '/permissions', label: 'Permissions', icon: Key, permission: 'permissions:read' },
 ];
 
+const getGreeting = () => {
+  const hour = new Date().getHours();
+  if (hour < 12) return 'Good morning';
+  if (hour < 17) return 'Good afternoon';
+  return 'Good evening';
+};
+
 export default function Layout() {
   const { user, logout, hasPermission } = useAuth();
   const navigate = useNavigate();
@@ -117,7 +124,7 @@ export default function Layout() {
             {isDashboard ? (
               <div>
                 <h1 className="text-xl font-extrabold text-gray-900 tracking-tight flex items-center gap-2">
-                  Good morning, {user?.name || 'Admin'} <span className="animate-bounce">👋</span>
+                  {getGreeting()}, {user?.name || 'Admin'} <span className="animate-bounce">👋</span>
                 </h1>
                 <p className="text-xs text-gray-500 mt-0.5">Here's what's happening with your team today.</p>
               </div>
