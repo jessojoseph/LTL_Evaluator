@@ -40,6 +40,28 @@ const defaultLeaveRules = [
     description: 'Probation employees get 6 casual leaves per year.',
     isActive: true,
   },
+  {
+    name: 'Full-time Employee - Annual Leave',
+    employmentType: 'full_time',
+    leaveType: 'annual',
+    periodType: 'yearly',
+    maxPerPeriod: 15,
+    annualAllocation: 15,
+    carryOver: false,
+    description: 'Full-time employees get 15 annual leaves per year.',
+    isActive: true,
+  },
+  {
+    name: 'Full-time Employee - Sick Leave',
+    employmentType: 'full_time',
+    leaveType: 'sick',
+    periodType: 'yearly',
+    maxPerPeriod: 10,
+    annualAllocation: 10,
+    carryOver: false,
+    description: 'Full-time employees get 10 sick leaves per year.',
+    isActive: true,
+  },
 ];
 
 async function seed() {

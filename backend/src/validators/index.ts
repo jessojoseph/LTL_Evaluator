@@ -201,6 +201,19 @@ export const createSelfLeaveSchema = z.object({
   }),
 });
 
+// Self-service leave update validator (no employeeId)
+export const updateSelfLeaveSchema = z.object({
+  body: z.object({
+    startDate: z.string().min(1, 'Start date is required'),
+    endDate: z.string().min(1, 'End date is required'),
+    type: z.enum(['annual', 'sick', 'personal', 'other', 'casual', 'medical']),
+    reason: z.string().optional(),
+  }),
+  params: z.object({
+    id: z.string(),
+  }),
+});
+
 // Leave Rule validators
 export const createLeaveRuleSchema = z.object({
   body: z.object({

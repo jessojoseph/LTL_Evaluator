@@ -150,10 +150,12 @@ export const leaveApi = {
   createSelf: (data: Record<string, unknown>) => api.post('/leaves/self', data),
   update: (id: string, data: Record<string, unknown>) => api.put(`/leaves/${id}`, data),
   remove: (id: string) => api.delete(`/leaves/${id}`),
-  approve: (id: string, approvedBy: string) => api.patch(`/leaves/${id}/approve`, { approvedBy }),
-  reject: (id: string, approvedBy: string) => api.patch(`/leaves/${id}/reject`, { approvedBy }),
+  approve: (id: string) => api.patch(`/leaves/${id}/approve`),
+  reject: (id: string) => api.patch(`/leaves/${id}/reject`),
+  updateSelf: (id: string, data: Record<string, unknown>) => api.patch(`/leaves/self/${id}`, data),
   cancelSelf: (id: string) => api.patch(`/leaves/self/${id}/cancel`),
   revoke: (id: string) => api.patch(`/leaves/${id}/revoke`),
+  getBalance: () => api.get('/leaves/balance'),
 };
 
 // Leave Rules

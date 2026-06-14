@@ -8,7 +8,7 @@ import Pagination from '../components/Pagination';
 import { usePagination } from '../hooks/usePagination';
 
 export default function Leaves() {
-  const { user, hasPermission } = useAuth();
+  const { hasPermission } = useAuth();
   const canReadAll = hasPermission('leaves:read');
   const canCreateAny = hasPermission('leaves:create');
   const canSelfServe = hasPermission('leaves:self');
@@ -28,7 +28,15 @@ export default function Leaves() {
     type: 'annual' as Leave['type'],
     reason: '',
   });
+  const [balance, setBalance] = useState<{ leaveType: string; remaining: number; used: number; maxPerPeriod: number }[]>([]);
   const [loading, setLoading] = useState(true);
+
+  const loadBalance = async () => {
+    try {
+      const { data } = await leaveApi.getBalance();
+      setBalance(data.balances || []);
+    } catch { /* ignore */ }
+  };
 
   const load = async () => {
     setLoading(true);
@@ -53,7 +61,7 @@ export default function Leaves() {
     }
   };
 
-  useEffect(() => { load(); }, [search, statusFilter, typeFilter]);
+  useEffect(() => { load(); loadBalance(); }, [search, statusFilter, typeFilter]);
 
   // Client-side search by employee name/code (admin view only)
   const filteredLeaves = leaves.filter((l) => {
@@ -112,7 +120,17 @@ export default function Leaves() {
     }
 
     if (editing) {
-      await leaveApi.update(editing._id, form);
+      if (hasPermission('leaves:update')) {
+        await leaveApi.update(editing._id, form);
+      } else {
+        const { data } = await leaveApi.updateSelf(editing._id, {
+          startDate: form.startDate,
+          endDate: form.endDate,
+          type: form.type,
+          reason: form.reason,
+        });
+        if (data.lopWarning) setLopWarning(data.lopWarning);
+      }
     } else if (canCreateAny) {
       const { data } = await leaveApi.create(form);
       if (data.lopWarning) setLopWarning(data.lopWarning);
@@ -136,14 +154,12 @@ export default function Leaves() {
   };
 
   const handleApprove = async (id: string) => {
-    if (!user?.id) return;
-    await leaveApi.approve(id, user.id);
+    await leaveApi.approve(id);
     load();
   };
 
   const handleReject = async (id: string) => {
-    if (!user?.id) return;
-    await leaveApi.reject(id, user.id);
+    await leaveApi.reject(id);
     load();
   };
 
@@ -195,6 +211,34 @@ export default function Leaves() {
           </button>
         )}
       </div>
+
+      {/* Leave Balance Summary */}
+      {balance.length > 0 && (
+        <div className="flex flex-wrap gap-3">
+          {balance.map((b) => (
+            <div key={b.leaveType} className="flex items-center gap-3 bg-white rounded-xl px-4 py-3 border border-gray-100 shadow-sm min-w-[160px]">
+              <div className="flex-1 min-w-0">
+                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">{b.leaveType}</p>
+                <div className="flex items-baseline gap-1.5 mt-1">
+                  <span className="text-lg font-bold text-gray-900">{b.remaining}</span>
+                  <span className="text-xs text-gray-400">/ {b.maxPerPeriod} remaining</span>
+                </div>
+                <div className="mt-1.5 w-full h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                  <div
+                    className={`h-full rounded-full transition-all duration-500 ${
+                      b.remaining === 0 ? 'bg-red-400' :
+                      b.remaining <= Math.ceil(b.maxPerPeriod * 0.25) ? 'bg-orange-400' :
+                      'bg-emerald-400'
+                    }`}
+                    style={{ width: `${Math.min(100, (b.remaining / b.maxPerPeriod) * 100)}%` }}
+                  />
+                </div>
+                <p className="text-[10px] text-gray-400 mt-0.5">{b.used} used this period</p>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
 
       {/* LOP Warning Banner */}
       {lopWarning && (

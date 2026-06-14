@@ -27,6 +27,7 @@ export const defaultRoles = [
       'weeks:read', 'weeks:create', 'weeks:update', 'weeks:copy',
       'allocations:read', 'allocations:create', 'allocations:update', 'allocations:delete', 'allocations:bulk_create',
       'reports:read', 'export:read',
+      'leaves:read',
       'leaves:self',
     ],
   },

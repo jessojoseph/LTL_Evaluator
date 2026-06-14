@@ -301,11 +301,23 @@ export async function remove(req: Request, res: Response): Promise<void> {
   }
 }
 
-export async function approve(req: Request, res: Response): Promise<void> {
+export async function approve(req: AuthRequest, res: Response): Promise<void> {
   try {
+    if (!req.user) {
+      res.status(401).json({ message: 'Authentication required' });
+      return;
+    }
+
+    // Look up the Employee by the logged-in user's email
+    const approver = await Employee.findOne({ email: req.user.email.toLowerCase() });
+    if (!approver) {
+      res.status(404).json({ message: 'No employee record found for your account' });
+      return;
+    }
+
     const leave = await Leave.findByIdAndUpdate(
       req.params.id,
-      { status: 'approved', approvedBy: req.body.approvedBy },
+      { status: 'approved', approvedBy: approver._id },
       { new: true, runValidators: true }
     )
       .populate('employeeId', 'name email employeeCode')
@@ -321,11 +333,23 @@ export async function approve(req: Request, res: Response): Promise<void> {
   }
 }
 
-export async function reject(req: Request, res: Response): Promise<void> {
+export async function reject(req: AuthRequest, res: Response): Promise<void> {
   try {
+    if (!req.user) {
+      res.status(401).json({ message: 'Authentication required' });
+      return;
+    }
+
+    // Look up the Employee by the logged-in user's email
+    const approver = await Employee.findOne({ email: req.user.email.toLowerCase() });
+    if (!approver) {
+      res.status(404).json({ message: 'No employee record found for your account' });
+      return;
+    }
+
     const leave = await Leave.findByIdAndUpdate(
       req.params.id,
-      { status: 'rejected', approvedBy: req.body.approvedBy },
+      { status: 'rejected', approvedBy: approver._id },
       { new: true, runValidators: true }
     )
       .populate('employeeId', 'name email employeeCode')
@@ -378,6 +402,122 @@ export async function cancelSelf(req: AuthRequest, res: Response): Promise<void>
     await leave.populate('employeeId', 'name email employeeCode');
 
     res.json({ leave, message: 'Leave request cancelled successfully' });
+  } catch (error) {
+    res.status(500).json({ message: 'Server error' });
+  }
+}
+
+export async function editSelf(req: AuthRequest, res: Response): Promise<void> {
+  try {
+    if (!req.user) {
+      res.status(401).json({ message: 'Authentication required' });
+      return;
+    }
+
+    const employee = await Employee.findOne({ email: req.user.email.toLowerCase() });
+    if (!employee) {
+      res.status(404).json({ message: 'No employee record found for your account' });
+      return;
+    }
+
+    const leave = await Leave.findById(req.params.id);
+    if (!leave) {
+      res.status(404).json({ message: 'Leave not found' });
+      return;
+    }
+
+    // Verify ownership
+    if (leave.employeeId.toString() !== employee._id.toString()) {
+      res.status(403).json({ message: 'You can only edit your own leave requests' });
+      return;
+    }
+
+    // Only pending leaves can be edited
+    if (leave.status !== 'pending') {
+      res.status(400).json({ message: 'Only pending leave requests can be edited' });
+      return;
+    }
+
+    const { startDate, endDate, type, reason } = req.body;
+
+    // Recalculate LOP if dates changed
+    if (startDate || endDate || type) {
+      const days = Math.max(1, Math.round(
+        (new Date(endDate || leave.endDate).getTime() - new Date(startDate || leave.startDate).getTime()) / (1000 * 60 * 60 * 24)
+      ) + 1);
+
+      const balanceCheck = await checkLeaveBalance(
+        employee._id.toString(),
+        employee.employmentType,
+        type || leave.type,
+        days
+      );
+
+      leave.isLop = balanceCheck.willBeLop;
+      leave.lopReason = balanceCheck.lopReason || undefined;
+    }
+
+    if (startDate) leave.startDate = new Date(startDate);
+    if (endDate) leave.endDate = new Date(endDate);
+    if (type) leave.type = type;
+    if (reason !== undefined) leave.reason = reason;
+
+    await leave.save();
+    await leave.populate('employeeId', 'name email employeeCode');
+
+    res.json({ leave, lopWarning: leave.isLop ? leave.lopReason : undefined });
+  } catch (error) {
+    res.status(500).json({ message: 'Server error' });
+  }
+}
+
+export async function getBalance(req: AuthRequest, res: Response): Promise<void> {
+  try {
+    if (!req.user) {
+      res.status(401).json({ message: 'Authentication required' });
+      return;
+    }
+
+    const employee = await Employee.findOne({ email: req.user.email.toLowerCase() });
+    if (!employee) {
+      res.status(404).json({ message: 'No employee record found for your account' });
+      return;
+    }
+
+    // Find all active rules for this employment type
+    const rules = await LeaveRule.find({ employmentType: employee.employmentType, isActive: true });
+
+    const balances = await Promise.all(
+      rules.map(async (rule) => {
+        const { start, end } = getPeriodStartEnd(rule.periodType, new Date());
+
+        const leavesInPeriod = await Leave.find({
+          employeeId: employee._id,
+          type: rule.leaveType,
+          status: { $in: ['approved', 'pending'] },
+          startDate: { $lte: end },
+          endDate: { $gte: start },
+        });
+
+        let usedDays = 0;
+        for (const l of leavesInPeriod) {
+          usedDays += Math.max(1, Math.round((l.endDate.getTime() - l.startDate.getTime()) / (1000 * 60 * 60 * 24)) + 1);
+        }
+
+        const remaining = Math.max(0, rule.maxPerPeriod - usedDays);
+
+        return {
+          leaveType: rule.leaveType,
+          periodType: rule.periodType,
+          maxPerPeriod: rule.maxPerPeriod,
+          used: usedDays,
+          remaining,
+          annualAllocation: rule.annualAllocation,
+        };
+      })
+    );
+
+    res.json({ balances });
   } catch (error) {
     res.status(500).json({ message: 'Server error' });
   }
