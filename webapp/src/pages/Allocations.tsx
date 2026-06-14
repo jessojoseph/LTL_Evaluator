@@ -76,17 +76,25 @@ export default function Allocations() {
 
   useEffect(() => { load(); }, []);
 
+  const getFilterParams = (): Record<string, string> => {
+    const params: Record<string, string> = { weekId: selectedWeek };
+    if (filterLead) params.projectLeadId = filterLead;
+    if (filterProject) params.projectId = filterProject;
+    if (filterEmployee) params.employeeId = filterEmployee;
+    return params;
+  };
+
+  const fetchAllocations = (params: Record<string, string>) => {
+    allocationApi.getAll(params).then(({ data }) => {
+      setAllocations(data.allocations);
+      setTableLoading(false);
+    });
+  };
+
   useEffect(() => {
     if (selectedWeek) {
       setTableLoading(true);
-      const params: Record<string, string> = { weekId: selectedWeek };
-      if (filterLead) params.projectLeadId = filterLead;
-      if (filterProject) params.projectId = filterProject;
-      if (filterEmployee) params.employeeId = filterEmployee;
-      allocationApi.getAll(params).then(({ data }) => {
-        setAllocations(data.allocations);
-        setTableLoading(false);
-      });
+      fetchAllocations(getFilterParams());
     } else {
       setAllocations([]);
     }
@@ -137,7 +145,7 @@ export default function Allocations() {
         if (res.warning) setWarning(res.warning);
       }
       setShowModal(false);
-      allocationApi.getAll({ weekId: selectedWeek }).then(({ data }) => setAllocations(data.allocations));
+      fetchAllocations(getFilterParams());
     } catch (err: unknown) {
       const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message || 'Error saving allocation';
       setWarning(msg);
@@ -146,7 +154,7 @@ export default function Allocations() {
 
   const toggleStatus = async (id: string) => {
     await allocationApi.toggleStatus(id);
-    allocationApi.getAll({ weekId: selectedWeek }).then(({ data }) => setAllocations(data.allocations));
+    fetchAllocations(getFilterParams());
   };
 
   const filteredProjects = projects.filter((p) => !form.projectLeadId || p.projectLeadId._id === form.projectLeadId);
