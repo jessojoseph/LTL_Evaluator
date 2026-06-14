@@ -1,7 +1,8 @@
 import { Request, Response } from 'express';
-import { generateWeeklyExport } from '../utils/excel';
+import { generateWeeklyExport, generatePayrollExport } from '../utils/excel';
 import { Week } from '../models/Week';
 import { Allocation } from '../models/Allocation';
+import { Leave } from '../models/Leave';
 import { Employee } from '../models/Employee';
 import { Project } from '../models/Project';
 
@@ -9,6 +10,8 @@ import {
   calculateFreeWH,
   calculateOverbookedWH,
   calculateUtilization,
+  getWorkingDaysInMonth,
+  countLeaveDaysInMonth,
 } from '../utils/helpers';
 
 import { PopulatedDoc, AllocationPopulated, EmployeeWiseItem } from '../types';
@@ -132,7 +135,6 @@ async function getReportData(weekId?: string) {
     .map((e) => ({ ...e, overbookedWH: calculateOverbookedWH(e.capacityWH, e.allocatedWH) }))
     .filter((e) => e.overbookedWH > 0);
 
-  // Employee-wise: group allocations by employee with project breakdown
   const employeeWiseData = employees
     .map((emp) => {
       const empAllocations = allocations.filter(
@@ -292,5 +294,91 @@ export async function exportProjectWise(req: Request, res: Response): Promise<vo
   } catch (error) {
     console.error('Export error:', error);
     res.status(500).json({ message: 'Failed to generate Excel report' });
+  }
+}
+
+export async function exportMonthlyPayroll(req: Request, res: Response): Promise<void> {
+  try {
+    const year = parseInt(req.query.year as string) || new Date().getFullYear();
+    const month = parseInt(req.query.month as string) || new Date().getMonth();
+
+    const monthStart = new Date(year, month, 1);
+    const monthEnd = new Date(year, month + 1, 0, 23, 59, 59);
+    const totalWorkingDays = getWorkingDaysInMonth(year, month);
+
+    const employees = await Employee.find({ status: 'active' }).sort({ name: 1 });
+
+    const leaves = await Leave.find({
+      status: { $in: ['approved', 'pending'] },
+      startDate: { $lte: monthEnd },
+      endDate: { $gte: monthStart },
+    })
+      .populate('employeeId', 'name employeeCode department')
+      .populate('approvedBy', 'name');
+
+    // Group by employee
+    const leaveMap = new Map<string, typeof leaves>();
+    for (const l of leaves) {
+      const empId = l.employeeId._id.toString();
+      if (!leaveMap.has(empId)) leaveMap.set(empId, []);
+      leaveMap.get(empId)!.push(l);
+    }
+
+    const rows: Record<string, unknown>[] = [];
+    const detailRows: Record<string, unknown>[] = [];
+
+    for (const emp of employees) {
+      const empLeaves = leaveMap.get(emp._id.toString()) || [];
+      let totalLeaveDays = 0;
+      let totalLopDays = 0;
+
+      for (const l of empLeaves) {
+        const overlapDays = countLeaveDaysInMonth(
+          new Date(l.startDate), new Date(l.endDate), monthStart, monthEnd
+        );
+        if (overlapDays === 0) continue;
+        totalLeaveDays += overlapDays;
+        if (l.isLop) totalLopDays += overlapDays;
+
+        detailRows.push({
+          employee: emp.name,
+          code: emp.employeeCode || '-',
+          department: emp.department || '-',
+          type: l.type,
+          startDate: l.startDate.toISOString().split('T')[0],
+          endDate: l.endDate.toISOString().split('T')[0],
+          days: overlapDays,
+          status: l.status,
+          isLop: l.isLop ? 'Yes' : 'No',
+          approvedBy: (l.approvedBy as { name?: string })?.name || '-',
+        });
+      }
+
+      rows.push({
+        employee: emp.name,
+        code: emp.employeeCode || '-',
+        department: emp.department || '-',
+        leaveDays: totalLeaveDays,
+        lopDays: totalLopDays,
+        netPayableDays: totalWorkingDays - totalLopDays,
+      });
+    }
+
+    const monthName = new Date(year, month).toLocaleString('default', { month: 'long' });
+    const buffer = await generatePayrollExport({
+      month: `${monthName} ${year}`,
+      summary: rows,
+      details: detailRows,
+    });
+
+    res.setHeader(
+      'Content-Type',
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    );
+    res.setHeader('Content-Disposition', `attachment; filename=payroll-${monthName.toLowerCase()}-${year}.xlsx`);
+    res.send(buffer);
+  } catch (error) {
+    console.error('Payroll export error:', error);
+    res.status(500).json({ message: 'Failed to generate payroll export' });
   }
 }

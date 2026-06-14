@@ -14,6 +14,7 @@ import permissionRoutes from './routes/permissions';
 import userRoutes from './routes/users';
 import leaveRoutes from './routes/leaves';
 import leaveRuleRoutes from './routes/leaveRules';
+import payrollRoutes from './routes/payroll';
 
 const app = express();
 
@@ -40,6 +41,7 @@ app.use('/api/permissions', permissionRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/leaves', leaveRoutes);
 app.use('/api/leave-rules', leaveRuleRoutes);
+app.use('/api/payroll', payrollRoutes);
 
 // 404 handler
 app.use((_req, res) => {

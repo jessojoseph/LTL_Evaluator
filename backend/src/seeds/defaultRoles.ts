@@ -9,7 +9,7 @@ export const defaultRoles = [
       'projects:create', 'projects:read', 'projects:update', 'projects:delete',
       'weeks:create', 'weeks:read', 'weeks:update', 'weeks:delete', 'weeks:copy',
       'allocations:create', 'allocations:read', 'allocations:update', 'allocations:delete', 'allocations:bulk_create',
-      'reports:read', 'export:read',
+      'reports:read', 'export:read', 'reports:payroll',
       'leaves:create', 'leaves:read', 'leaves:update', 'leaves:delete', 'leaves:approve',
       'leave_rules:create', 'leave_rules:read', 'leave_rules:update', 'leave_rules:delete',
       'roles:create', 'roles:read', 'roles:update', 'roles:delete',

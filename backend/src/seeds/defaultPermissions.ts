@@ -57,6 +57,9 @@ export const defaultPermissions = [
   { name: 'leave_rules:update', label: 'Update Leave Rules', description: 'Edit leave allocation rules', module: 'Leave Rules', isSystem: true },
   { name: 'leave_rules:delete', label: 'Delete Leave Rules', description: 'Delete leave allocation rules', module: 'Leave Rules', isSystem: true },
 
+  // Payroll
+  { name: 'reports:payroll', label: 'Monthly Payroll Reports', description: 'View monthly leave summary for payroll calculation', module: 'Payroll', isSystem: true },
+
   // Permissions
   { name: 'permissions:create', label: 'Create Permissions', description: 'Create new permissions', module: 'Permissions', isSystem: true },
   { name: 'permissions:read', label: 'Read Permissions', description: 'View permissions', module: 'Permissions', isSystem: true },

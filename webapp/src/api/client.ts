@@ -158,6 +158,14 @@ export const leaveApi = {
   getBalance: () => api.get('/leaves/balance'),
 };
 
+// Payroll
+export const payrollApi = {
+  monthlySummary: (params?: Record<string, string>) =>
+    api.get('/payroll/monthly-summary', { params }),
+  exportExcel: (params?: Record<string, string>) =>
+    api.get('/payroll/export', { params, responseType: 'blob' }),
+};
+
 // Leave Rules
 export const leaveRuleApi = {
   getAll: (params?: Record<string, string>) => api.get('/leave-rules', { params }),

@@ -1,12 +1,15 @@
 import { useEffect, useState } from 'react';
-import { reportApi, weekApi, exportApi, downloadExcel } from '../api/client';
+import { useLocation, useParams, useNavigate } from 'react-router-dom';
+import { reportApi, weekApi, payrollApi, exportApi, downloadExcel } from '../api/client';
 import type { Week, EmployeeUtilization, ProjectWiseReport, LeadSummary, FreeResource, OverbookedResource, EmployeeWiseItem } from '../types';
-import { Download, Search, ChevronDown, ChevronUp, BarChart3 } from 'lucide-react';
+import { Download, Search, ChevronDown, ChevronUp, BarChart3, AlertTriangle, Users, CalendarDays } from 'lucide-react';
 import { Loader } from '../components/Loader';
 import Pagination from '../components/Pagination';
 import { usePagination } from '../hooks/usePagination';
+import { useAuth } from '../context/AuthContext';
 
-const TABS = [
+// ── Allocation Report Tabs ──
+const ALLOCATION_TABS = [
   { key: 'utilization', label: 'Employee Utilization' },
   { key: 'project-wise', label: 'Project Wise' },
   { key: 'lead-summary', label: 'Lead Summary' },
@@ -16,10 +19,77 @@ const TABS = [
   { key: 'comparison', label: 'Week Comparison' },
 ];
 
+// ── Payroll Types ──
+interface LeaveRecord {
+  type: string;
+  startDate: string;
+  endDate: string;
+  status: string;
+  isLop: boolean;
+  lopReason?: string;
+  days: number;
+}
+
+interface EmployeePayrollRow {
+  employeeId: string;
+  employeeName: string;
+  employeeCode: string;
+  email: string;
+  department: string;
+  designation: string;
+  employmentType: string;
+  workingDays: number;
+  leaveDays: number;
+  lopDays: number;
+  presentDays: number;
+  netPayableDays: number;
+  leaveTypeBreakdown: Record<string, { days: number; lopDays: number }>;
+  leaveRecords: LeaveRecord[];
+}
+
+interface PayrollResponse {
+  year: number;
+  month: number;
+  monthName: string;
+  summary: {
+    totalEmployees: number;
+    totalWorkingDays: number;
+    totalLeaveDays: number;
+    totalLopDays: number;
+    employeesWithLop: number;
+  };
+  report: EmployeePayrollRow[];
+}
+
 const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 
+const LEAVE_TYPE_COLORS: Record<string, string> = {
+  annual: 'bg-blue-50 text-blue-700 border-blue-200',
+  sick: 'bg-red-50 text-red-700 border-red-200',
+  casual: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+  medical: 'bg-purple-50 text-purple-700 border-purple-200',
+  personal: 'bg-orange-50 text-orange-700 border-orange-200',
+  other: 'bg-gray-50 text-gray-600 border-gray-200',
+};
+
 export default function Reports() {
-  const [activeTab, setActiveTab] = useState('utilization');
+  const { hasPermission } = useAuth();
+  const location = useLocation();
+  const params = useParams();
+  const navigate = useNavigate();
+  const canViewPayroll = hasPermission('reports:payroll');
+
+  // Determine active tab from route params: /reports/:reportTab
+  const isPayrollRoute = location.pathname === '/reports/payroll';
+  const routeTab = isPayrollRoute ? 'payroll' : (params.reportTab || 'utilization');
+  const [activeTab, setActiveTab] = useState(routeTab);
+
+  // Sync tab when route changes
+  useEffect(() => {
+    setActiveTab(routeTab);
+  }, [routeTab]);
+
+  // ── Allocation Report State ──
   const [weeks, setWeeks] = useState<Week[]>([]);
   const [selectedYear, setSelectedYear] = useState('');
   const [selectedMonth, setSelectedMonth] = useState('');
@@ -36,6 +106,19 @@ export default function Reports() {
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(false);
 
+  // ── Payroll State ──
+  const payrollCurrentYear = new Date().getFullYear();
+  const payrollCurrentMonth = new Date().getMonth();
+  const [payYear, setPayYear] = useState(payrollCurrentYear);
+  const [payMonth, setPayMonth] = useState(payrollCurrentMonth);
+  const [payData, setPayData] = useState<PayrollResponse | null>(null);
+  const [payLoading, setPayLoading] = useState(false);
+  const [paySearch, setPaySearch] = useState('');
+  const [payExpandedEmp, setPayExpandedEmp] = useState<string | null>(null);
+
+  const isPayrollTab = activeTab === 'payroll';
+
+  // ── Allocation helpers ──
   const years = [...new Set(weeks.map((w) => new Date(w.startDate).getFullYear()))].sort((a, b) => b - a);
   const monthsInYear = selectedYear
     ? [...new Set(weeks
@@ -50,6 +133,7 @@ export default function Reports() {
     return true;
   });
 
+  // ── Init weeks ──
   useEffect(() => {
     weekApi.getAll().then(({ data }) => {
       setWeeks(data.weeks);
@@ -63,7 +147,8 @@ export default function Reports() {
     });
   }, []);
 
-  const fetchData = async () => {
+  // ── Fetch allocation data ──
+  const fetchAllocationData = async () => {
     if (!selectedWeek) return;
     setLoading(true);
     try {
@@ -97,8 +182,13 @@ export default function Reports() {
     }
   };
 
-  useEffect(() => { if (activeTab !== 'comparison') fetchData(); }, [selectedWeek, activeTab]);
-  useEffect(() => { if (activeTab === 'comparison') fetchComparison(); }, [selectedWeeks, activeTab]);
+  useEffect(() => {
+    if (!isPayrollTab && activeTab !== 'comparison') fetchAllocationData();
+  }, [selectedWeek, activeTab]);
+
+  useEffect(() => {
+    if (activeTab === 'comparison') fetchComparison();
+  }, [selectedWeeks, activeTab]);
 
   const handleExport = async () => {
     if (!selectedWeek) return;
@@ -115,12 +205,60 @@ export default function Reports() {
     (r) => !search || r.employee.toLowerCase().includes(search.toLowerCase()) || r.lead.toLowerCase().includes(search.toLowerCase())
   );
 
-  // Pagination hooks for each tab's data
   const utilPagination = usePagination({ data: filteredUtilData, pageSize: 10 });
   const projPagination = usePagination({ data: projData, pageSize: 10 });
   const leadPagination = usePagination({ data: leadData, pageSize: 10 });
   const freePagination = usePagination({ data: freeData, pageSize: 10 });
   const overPagination = usePagination({ data: overData, pageSize: 10 });
+
+  // ── Payroll fetch ──
+  const fetchPayroll = async () => {
+    setPayLoading(true);
+    try {
+      const { data: res } = await payrollApi.monthlySummary({
+        year: String(payYear),
+        month: String(payMonth),
+      });
+      setPayData(res);
+    } finally {
+      setPayLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (isPayrollTab) fetchPayroll();
+  }, [payYear, payMonth, isPayrollTab]);
+
+  const handlePayrollExport = async () => {
+    const { data: blob } = await payrollApi.exportExcel({
+      year: String(payYear),
+      month: String(payMonth),
+    });
+    downloadExcel(blob as Blob, `payroll-${MONTHS[payMonth].toLowerCase()}-${payYear}.xlsx`);
+  };
+
+  const payFilteredReport = payData?.report.filter(
+    (r) =>
+      !paySearch ||
+      r.employeeName.toLowerCase().includes(paySearch.toLowerCase()) ||
+      r.employeeCode.toLowerCase().includes(paySearch.toLowerCase()) ||
+      r.department.toLowerCase().includes(paySearch.toLowerCase())
+  ) || [];
+
+  const payTotalLeaveDays = payFilteredReport.reduce((s, r) => s + r.leaveDays, 0);
+  const payTotalLopDays = payFilteredReport.reduce((s, r) => s + r.lopDays, 0);
+
+  // ── Build tab list with sections ──
+  const tabSections = [
+    {
+      label: 'Allocation Reports',
+      tabs: ALLOCATION_TABS,
+    },
+    ...(canViewPayroll ? [{
+      label: 'Leave Reports',
+      tabs: [{ key: 'payroll', label: 'Payroll' }],
+    }] : []),
+  ];
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -132,18 +270,25 @@ export default function Reports() {
           </div>
           <div>
             <h1 className="text-xl font-bold text-gray-900">Reports</h1>
-            <p className="text-sm text-gray-500 mt-0.5">View and export planning reports</p>
+            <p className="text-sm text-gray-500 mt-0.5">
+              {isPayrollTab ? 'Monthly leave summary for payroll calculation' : 'View and export planning reports'}
+            </p>
           </div>
         </div>
-        {activeTab !== 'comparison' && (
+        {!isPayrollTab && activeTab !== 'comparison' && (
           <button onClick={handleExport} className="btn-secondary">
+            <Download className="w-4 h-4" /> Export Excel
+          </button>
+        )}
+        {isPayrollTab && payData && (
+          <button onClick={handlePayrollExport} className="btn-secondary">
             <Download className="w-4 h-4" /> Export Excel
           </button>
         )}
       </div>
 
-      {/* Week selector */}
-      {activeTab !== 'comparison' ? (
+      {/* ── Allocation: Week selector ── */}
+      {!isPayrollTab && activeTab !== 'comparison' && (
         <div className="flex items-center gap-2 flex-wrap">
           <select className="input w-auto text-sm" value={selectedYear}
             onChange={(e) => { setSelectedYear(e.target.value); setSelectedMonth(''); setSelectedWeek(''); }}>
@@ -167,7 +312,10 @@ export default function Reports() {
             })}
           </select>
         </div>
-      ) : (
+      )}
+
+      {/* ── Allocation: Week comparison selector ── */}
+      {!isPayrollTab && activeTab === 'comparison' && (
         <div className="flex flex-wrap gap-2">
           {weeks.map((w) => {
             const isInactive = w.isActive === false;
@@ -185,19 +333,51 @@ export default function Reports() {
         </div>
       )}
 
-      {/* Tabs */}
+      {/* ── Payroll: Controls ── */}
+      {isPayrollTab && (
+        <div className="flex items-center gap-3 flex-wrap">
+          <select className="input w-auto text-sm" value={payYear} onChange={(e) => setPayYear(Number(e.target.value))}>
+            {Array.from({ length: 5 }, (_, i) => payrollCurrentYear - 2 + i).map((y) => (
+              <option key={y} value={y}>{y}</option>
+            ))}
+          </select>
+          <select className="input w-auto text-sm" value={payMonth} onChange={(e) => setPayMonth(Number(e.target.value))}>
+            {MONTHS.map((m, i) => (
+              <option key={i} value={i}>{m}</option>
+            ))}
+          </select>
+          <div className="relative max-w-xs flex-1">
+            <input className="input pl-8" placeholder="Search employee, code, or department..."
+              value={paySearch} onChange={(e) => setPaySearch(e.target.value)} />
+          </div>
+        </div>
+      )}
+
+      {/* ── Tabs with sections ── */}
       <div className="border-b border-gray-100">
         <nav className="tabs-modern overflow-x-auto">
-          {TABS.map((tab) => (
-            <button key={tab.key} onClick={() => setActiveTab(tab.key)}
-              className={activeTab === tab.key ? 'tab-modern-active' : 'tab-modern-inactive'}>
-              {tab.label}
-            </button>
+          {tabSections.map((section, si) => (
+            <div key={si} className="flex items-center gap-0.5">
+              {si > 0 && <div className="w-px h-5 bg-gray-200 mx-2" />}
+              <span className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider mr-1 select-none">{section.label}</span>
+              {section.tabs.map((tab) => (
+                <button key={tab.key} onClick={() => {
+                  if (tab.key === 'payroll') {
+                    navigate('/reports/payroll');
+                  } else {
+                    navigate(`/reports/${tab.key}`);
+                  }
+                }}
+                  className={activeTab === tab.key ? 'tab-modern-active' : 'tab-modern-inactive'}>
+                  {tab.label}
+                </button>
+              ))}
+            </div>
           ))}
         </nav>
       </div>
 
-      {/* Search */}
+      {/* ── Allocation: Search ── */}
       {activeTab === 'utilization' && (
         <div className="relative max-w-sm">
           <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
@@ -205,79 +385,248 @@ export default function Reports() {
         </div>
       )}
 
-      {loading ? (
+      {/* ── Allocation Report Content ── */}
+      {!isPayrollTab && (loading ? (
         <div className="flex items-center justify-center h-64">
           <Loader text="Loading report data..." />
         </div>
       ) : (
+        <div className="card overflow-hidden">
+          <div className="overflow-x-auto">
+            {activeTab === 'utilization' && <UtilizationTable data={utilPagination.paginatedData} />}
+            {activeTab === 'project-wise' && <ProjectWiseTable data={projPagination.paginatedData} />}
+            {activeTab === 'lead-summary' && <LeadSummaryTable data={leadPagination.paginatedData} />}
+            {activeTab === 'free-resources' && <FreeResourcesTable data={freePagination.paginatedData} />}
+            {activeTab === 'overbooked' && <OverbookedTable data={overPagination.paginatedData} />}
+            {activeTab === 'employee-wise' && <EmployeeWiseTable data={empWiseData} expandedEmp={expandedEmp} setExpandedEmp={setExpandedEmp} />}
+            {activeTab === 'comparison' && <ComparisonTable data={compData} />}
+          </div>
+          {activeTab === 'utilization' && (
+            <Pagination currentPage={utilPagination.currentPage} totalPages={utilPagination.totalPages}
+              totalItems={utilPagination.totalItems} pageSize={utilPagination.pageSize}
+              onPageChange={utilPagination.setCurrentPage} onPageSizeChange={utilPagination.setPageSize} />
+          )}
+          {activeTab === 'project-wise' && (
+            <Pagination currentPage={projPagination.currentPage} totalPages={projPagination.totalPages}
+              totalItems={projPagination.totalItems} pageSize={projPagination.pageSize}
+              onPageChange={projPagination.setCurrentPage} onPageSizeChange={projPagination.setPageSize} />
+          )}
+          {activeTab === 'lead-summary' && (
+            <Pagination currentPage={leadPagination.currentPage} totalPages={leadPagination.totalPages}
+              totalItems={leadPagination.totalItems} pageSize={leadPagination.pageSize}
+              onPageChange={leadPagination.setCurrentPage} onPageSizeChange={leadPagination.setPageSize} />
+          )}
+          {activeTab === 'free-resources' && (
+            <Pagination currentPage={freePagination.currentPage} totalPages={freePagination.totalPages}
+              totalItems={freePagination.totalItems} pageSize={freePagination.pageSize}
+              onPageChange={freePagination.setCurrentPage} onPageSizeChange={freePagination.setPageSize} />
+          )}
+          {activeTab === 'overbooked' && (
+            <Pagination currentPage={overPagination.currentPage} totalPages={overPagination.totalPages}
+              totalItems={overPagination.totalItems} pageSize={overPagination.pageSize}
+              onPageChange={overPagination.setCurrentPage} onPageSizeChange={overPagination.setPageSize} />
+          )}
+        </div>
+      ))}
+
+      {/* ── Payroll Content ── */}
+      {isPayrollTab && (payLoading ? (
+        <div className="flex items-center justify-center h-64">
+          <Loader text="Loading payroll data..." />
+        </div>
+      ) : !payData ? (
+        <div className="text-center py-16 text-gray-400">No data available</div>
+      ) : (
         <>
+          {/* Summary Cards */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="card p-4 flex items-center gap-4">
+              <div className="p-3 bg-primary-50 rounded-xl">
+                <Users className="w-5 h-5 text-primary-600" />
+              </div>
+              <div>
+                <p className="text-xs text-gray-500 font-medium uppercase tracking-wider">Employees</p>
+                <p className="text-2xl font-bold text-gray-900">{payData.summary.totalEmployees}</p>
+              </div>
+            </div>
+            <div className="card p-4 flex items-center gap-4">
+              <div className="p-3 bg-blue-50 rounded-xl">
+                <CalendarDays className="w-5 h-5 text-blue-600" />
+              </div>
+              <div>
+                <p className="text-xs text-gray-500 font-medium uppercase tracking-wider">Working Days</p>
+                <p className="text-2xl font-bold text-gray-900">{payData.summary.totalWorkingDays}</p>
+                <p className="text-[10px] text-gray-400">{payData.monthName} {payData.year}</p>
+              </div>
+            </div>
+            <div className="card p-4 flex items-center gap-4">
+              <div className="p-3 bg-amber-50 rounded-xl">
+                <Download className="w-5 h-5 text-amber-600" />
+              </div>
+              <div>
+                <p className="text-xs text-gray-500 font-medium uppercase tracking-wider">Leave Days</p>
+                <p className="text-2xl font-bold text-gray-900">{payTotalLeaveDays}</p>
+                <p className="text-[10px] text-gray-400">{payData.summary.employeesWithLop} employees with LOP</p>
+              </div>
+            </div>
+            <div className="card p-4 flex items-center gap-4">
+              <div className="p-3 bg-red-50 rounded-xl">
+                <AlertTriangle className="w-5 h-5 text-red-600" />
+              </div>
+              <div>
+                <p className="text-xs text-gray-500 font-medium uppercase tracking-wider">LOP Total</p>
+                <p className="text-2xl font-bold text-red-600">{payTotalLopDays}</p>
+                <p className="text-[10px] text-gray-400">{payTotalLopDays > 0 ? `${((payTotalLopDays / payTotalLeaveDays) * 100).toFixed(1)}% of all leaves` : 'No LOP this month'}</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Employee Table */}
           <div className="card overflow-hidden">
             <div className="overflow-x-auto">
-              {activeTab === 'utilization' && <UtilizationTable data={utilPagination.paginatedData} />}
-              {activeTab === 'project-wise' && <ProjectWiseTable data={projPagination.paginatedData} />}
-              {activeTab === 'lead-summary' && <LeadSummaryTable data={leadPagination.paginatedData} />}
-              {activeTab === 'free-resources' && <FreeResourcesTable data={freePagination.paginatedData} />}
-              {activeTab === 'overbooked' && <OverbookedTable data={overPagination.paginatedData} />}
-              {activeTab === 'employee-wise' && <EmployeeWiseTable data={empWiseData} expandedEmp={expandedEmp} setExpandedEmp={setExpandedEmp} />}
-              {activeTab === 'comparison' && <ComparisonTable data={compData} />}
+              <table className="table-modern">
+                <thead>
+                  <tr className="bg-gray-50/80 border-b border-gray-100">
+                    <th className="text-left px-4 py-3.5 text-xs font-semibold text-gray-500 uppercase tracking-wider">Employee</th>
+                    <th className="text-left px-4 py-3.5 text-xs font-semibold text-gray-500 uppercase tracking-wider">Dept</th>
+                    <th className="text-center px-4 py-3.5 text-xs font-semibold text-gray-500 uppercase tracking-wider">Working Days</th>
+                    <th className="text-center px-4 py-3.5 text-xs font-semibold text-gray-500 uppercase tracking-wider">Leave Days</th>
+                    <th className="text-center px-4 py-3.5 text-xs font-semibold text-gray-500 uppercase tracking-wider">LOP</th>
+                    <th className="text-center px-4 py-3.5 text-xs font-semibold text-gray-500 uppercase tracking-wider">Present</th>
+                    <th className="text-center px-4 py-3.5 text-xs font-semibold text-gray-500 uppercase tracking-wider">Net Payable Days</th>
+                    <th className="text-center px-4 py-3.5 text-xs font-semibold text-gray-500 uppercase tracking-wider"></th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-50">
+                  {payFilteredReport.map((row) => (
+                    <tr key={row.employeeId} className="hover:bg-gray-50/50 transition-colors">
+                      <td className="px-4 py-3">
+                        <div className="flex items-center gap-3">
+                          <div className="w-8 h-8 bg-emerald-100 rounded-lg flex items-center justify-center shadow-sm">
+                            <span className="text-xs font-bold text-emerald-700">{row.employeeName.charAt(0).toUpperCase()}</span>
+                          </div>
+                          <div>
+                            <p className="font-semibold text-gray-900 text-sm">{row.employeeName}</p>
+                            <p className="text-[11px] text-gray-400">{row.employeeCode} · {row.designation}</p>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-4 py-3 text-sm text-gray-500">{row.department}</td>
+                      <td className="px-4 py-3 text-center text-sm text-gray-600">{row.workingDays}</td>
+                      <td className="px-4 py-3 text-center">
+                        <span className="text-sm font-medium text-amber-700">{row.leaveDays}</span>
+                        {row.leaveDays > 0 && (
+                          <div className="flex gap-1 justify-center mt-1">
+                            {Object.entries(row.leaveTypeBreakdown).map(([type, val]) =>
+                              val.days > 0 && (
+                                <span key={type} className={`text-[10px] px-1.5 py-0.5 rounded-full border ${LEAVE_TYPE_COLORS[type] || 'bg-gray-50 text-gray-600'}`}>
+                                  {type}:{val.days}
+                                </span>
+                              )
+                            )}
+                          </div>
+                        )}
+                      </td>
+                      <td className="px-4 py-3 text-center">
+                        {row.lopDays > 0 ? (
+                          <span className="inline-flex items-center gap-1 text-sm font-bold text-red-600">
+                            <AlertTriangle className="w-3.5 h-3.5" /> {row.lopDays}
+                          </span>
+                        ) : (
+                          <span className="text-sm text-gray-400">—</span>
+                        )}
+                      </td>
+                      <td className="px-4 py-3 text-center text-sm font-medium text-emerald-700">{row.presentDays}</td>
+                      <td className="px-4 py-3 text-center">
+                        <span className="text-sm font-bold text-gray-900">{row.netPayableDays}</span>
+                      </td>
+                      <td className="px-4 py-3 text-center">
+                        {row.leaveRecords.length > 0 && (
+                          <button onClick={() => setPayExpandedEmp(payExpandedEmp === row.employeeId ? null : row.employeeId)}
+                            className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors text-gray-400">
+                            {payExpandedEmp === row.employeeId ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                          </button>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                  {payFilteredReport.length === 0 && (
+                    <tr><td colSpan={8} className="text-center py-12 text-gray-400">No employees found</td></tr>
+                  )}
+                </tbody>
+                <tfoot className="bg-gray-50/80 border-t border-gray-100">
+                  <tr>
+                    <td className="px-4 py-3 font-semibold text-gray-900 text-sm">Total</td>
+                    <td className="px-4 py-3"></td>
+                    <td className="px-4 py-3 text-center font-semibold text-gray-900 text-sm">{payData.summary.totalWorkingDays}</td>
+                    <td className="px-4 py-3 text-center font-semibold text-amber-700 text-sm">{payTotalLeaveDays}</td>
+                    <td className="px-4 py-3 text-center font-semibold text-red-600 text-sm">{payTotalLopDays}</td>
+                    <td className="px-4 py-3 text-center font-semibold text-emerald-700 text-sm">{payFilteredReport.reduce((s, r) => s + r.presentDays, 0)}</td>
+                    <td className="px-4 py-3 text-center font-bold text-gray-900 text-sm">{payFilteredReport.reduce((s, r) => s + r.netPayableDays, 0)}</td>
+                    <td></td>
+                  </tr>
+                </tfoot>
+              </table>
             </div>
-            {/* Pagination for tabular reports */}
-            {activeTab === 'utilization' && (
-              <Pagination
-                currentPage={utilPagination.currentPage}
-                totalPages={utilPagination.totalPages}
-                totalItems={utilPagination.totalItems}
-                pageSize={utilPagination.pageSize}
-                onPageChange={utilPagination.setCurrentPage}
-                onPageSizeChange={utilPagination.setPageSize}
-              />
-            )}
-            {activeTab === 'project-wise' && (
-              <Pagination
-                currentPage={projPagination.currentPage}
-                totalPages={projPagination.totalPages}
-                totalItems={projPagination.totalItems}
-                pageSize={projPagination.pageSize}
-                onPageChange={projPagination.setCurrentPage}
-                onPageSizeChange={projPagination.setPageSize}
-              />
-            )}
-            {activeTab === 'lead-summary' && (
-              <Pagination
-                currentPage={leadPagination.currentPage}
-                totalPages={leadPagination.totalPages}
-                totalItems={leadPagination.totalItems}
-                pageSize={leadPagination.pageSize}
-                onPageChange={leadPagination.setCurrentPage}
-                onPageSizeChange={leadPagination.setPageSize}
-              />
-            )}
-            {activeTab === 'free-resources' && (
-              <Pagination
-                currentPage={freePagination.currentPage}
-                totalPages={freePagination.totalPages}
-                totalItems={freePagination.totalItems}
-                pageSize={freePagination.pageSize}
-                onPageChange={freePagination.setCurrentPage}
-                onPageSizeChange={freePagination.setPageSize}
-              />
-            )}
-            {activeTab === 'overbooked' && (
-              <Pagination
-                currentPage={overPagination.currentPage}
-                totalPages={overPagination.totalPages}
-                totalItems={overPagination.totalItems}
-                pageSize={overPagination.pageSize}
-                onPageChange={overPagination.setCurrentPage}
-                onPageSizeChange={overPagination.setPageSize}
-              />
+
+            {/* Expanded leave rows */}
+            {payExpandedEmp && (
+              <div className="border-t border-gray-100 bg-gray-50/30 animate-slide-down">
+                {(() => {
+                  const emp = payData.report.find((r) => r.employeeId === payExpandedEmp);
+                  if (!emp) return null;
+                  return (
+                    <div className="p-4 space-y-2">
+                      <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">Leave Records — {emp.employeeName}</p>
+                      <table className="w-full text-sm">
+                        <thead>
+                          <tr className="border-b border-gray-200">
+                            <th className="text-left px-3 py-2 text-xs font-semibold text-gray-500 uppercase">Type</th>
+                            <th className="text-left px-3 py-2 text-xs font-semibold text-gray-500 uppercase">Dates</th>
+                            <th className="text-center px-3 py-2 text-xs font-semibold text-gray-500 uppercase">Days</th>
+                            <th className="text-center px-3 py-2 text-xs font-semibold text-gray-500 uppercase">Status</th>
+                            <th className="text-center px-3 py-2 text-xs font-semibold text-gray-500 uppercase">LOP?</th>
+                            <th className="text-left px-3 py-2 text-xs font-semibold text-gray-500 uppercase">Reason</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-gray-100">
+                          {emp.leaveRecords.map((lr, i) => (
+                            <tr key={i} className="hover:bg-white transition-colors">
+                              <td className="px-3 py-2">
+                                <span className={`text-[11px] px-2 py-0.5 rounded-full border font-medium ${LEAVE_TYPE_COLORS[lr.type] || 'bg-gray-50 text-gray-600'}`}>{lr.type}</span>
+                              </td>
+                              <td className="px-3 py-2 text-gray-600">{new Date(lr.startDate).toLocaleDateString()} – {new Date(lr.endDate).toLocaleDateString()}</td>
+                              <td className="px-3 py-2 text-center font-medium">{lr.days}</td>
+                              <td className="px-3 py-2 text-center">
+                                <span className={`text-[11px] px-2 py-0.5 rounded-full font-medium ${
+                                  lr.status === 'approved' ? 'bg-emerald-50 text-emerald-700' :
+                                  lr.status === 'pending' ? 'bg-amber-50 text-amber-700' :
+                                  'bg-gray-100 text-gray-500'
+                                }`}>{lr.status}</span>
+                              </td>
+                              <td className="px-3 py-2 text-center">
+                                {lr.isLop ? <span className="text-red-600 font-bold">⚠ LOP</span> : <span className="text-gray-400">—</span>}
+                              </td>
+                              <td className="px-3 py-2 text-gray-500 text-xs max-w-[200px] truncate">{lr.lopReason || '—'}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  );
+                })()}
+              </div>
             )}
           </div>
         </>
-      )}
+      ))}
     </div>
   );
 }
+
+// ════════════════════════════════════════
+//  Allocation Table Components
+// ════════════════════════════════════════
 
 function TableHead({ columns, align }: { columns: string[]; align?: ('left' | 'center' | 'right')[] }) {
   return (
@@ -433,11 +782,7 @@ function EmployeeWiseTable({ data, expandedEmp, setExpandedEmp }: { data: Employ
               }`}>{item.statusLabel}</span>
               <span className="text-gray-400 text-xs">{item.projects.length} project{item.projects.length !== 1 ? 's' : ''}</span>
               <span className="font-bold text-primary-700">{item.totalWH} WH</span>
-              {expandedEmp === item.employeeId ? (
-                <ChevronUp className="w-4 h-4 text-gray-400" />
-              ) : (
-                <ChevronDown className="w-4 h-4 text-gray-400" />
-              )}
+              {expandedEmp === item.employeeId ? <ChevronUp className="w-4 h-4 text-gray-400" /> : <ChevronDown className="w-4 h-4 text-gray-400" />}
             </div>
           </button>
           {expandedEmp === item.employeeId && (
@@ -486,9 +831,7 @@ function ComparisonTable({ data }: { data: { weeks: { id: string; name: string }
         {data.report.map((r, i) => (
           <tr key={i}>
             <td className="font-semibold text-gray-900">{r.employee}</td>
-            {data.weeks.map((w) => (
-              <td key={w.id} className="text-center text-gray-600">{r[w.name] ?? 0}</td>
-            ))}
+            {data.weeks.map((w) => <td key={w.id} className="text-center text-gray-600">{r[w.name] ?? 0}</td>)}
             <td className="text-center font-semibold">{r.difference}</td>
           </tr>
         ))}

@@ -39,6 +39,8 @@ export default function App() {
             <Route path="/leaves" element={<Leaves />} />
             <Route path="/leave-rules" element={<LeaveRules />} />
             <Route path="/allocations" element={<Allocations />} />
+            <Route path="/reports/payroll" element={<Reports />} />
+            <Route path="/reports/:reportTab" element={<Reports />} />
             <Route path="/reports" element={<Reports />} />
             <Route path="/users" element={<Users />} />
             <Route path="/roles" element={<Roles />} />

@@ -137,3 +137,38 @@ export async function generateWeeklyExport(data: {
   const buffer = await workbook.xlsx.writeBuffer();
   return buffer;
 }
+
+export async function generatePayrollExport(data: {
+  month: string;
+  summary: Record<string, unknown>[];
+  details: Record<string, unknown>[];
+}): Promise<ExcelJS.Buffer> {
+  const workbook = new ExcelJS.Workbook();
+
+  // Summary sheet
+  addSheet(workbook, 'Payroll Summary', [
+    { header: 'Employee', key: 'employee', width: 22 },
+    { header: 'Code', key: 'code', width: 14 },
+    { header: 'Department', key: 'department', width: 18 },
+    { header: 'Leave Days', key: 'leaveDays', width: 14 },
+    { header: 'LOP Days', key: 'lopDays', width: 12 },
+    { header: 'Net Payable Days', key: 'netPayableDays', width: 18 },
+  ], data.summary);
+
+  // Detail sheet
+  addSheet(workbook, 'Leave Details', [
+    { header: 'Employee', key: 'employee', width: 22 },
+    { header: 'Code', key: 'code', width: 14 },
+    { header: 'Department', key: 'department', width: 18 },
+    { header: 'Leave Type', key: 'type', width: 14 },
+    { header: 'Start Date', key: 'startDate', width: 14 },
+    { header: 'End Date', key: 'endDate', width: 14 },
+    { header: 'Days', key: 'days', width: 8 },
+    { header: 'Status', key: 'status', width: 12 },
+    { header: 'Is LOP', key: 'isLop', width: 10 },
+    { header: 'Approved By', key: 'approvedBy', width: 18 },
+  ], data.details);
+
+  const buffer = await workbook.xlsx.writeBuffer();
+  return buffer;
+}

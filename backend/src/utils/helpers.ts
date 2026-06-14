@@ -58,6 +58,39 @@ export function getUtilizationStatus(utilization: number): {
 /**
  * Get the total allocated WH for an employee in a given week.
  */
+/**
+ * Get the number of working days in a month (excluding Sundays).
+ */
+export function getWorkingDaysInMonth(year: number, month: number): number {
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  let workingDays = 0;
+  for (let d = 1; d <= daysInMonth; d++) {
+    if (new Date(year, month, d).getDay() !== 0) workingDays++;
+  }
+  return workingDays;
+}
+
+/**
+ * Count the number of overlapping weekdays (Mon-Sat) between a leave period and a month.
+ */
+export function countLeaveDaysInMonth(
+  leaveStart: Date,
+  leaveEnd: Date,
+  monthStart: Date,
+  monthEnd: Date
+): number {
+  const start = leaveStart > monthStart ? leaveStart : monthStart;
+  const end = leaveEnd < monthEnd ? leaveEnd : monthEnd;
+  if (start > end) return 0;
+  let count = 0;
+  const d = new Date(start);
+  while (d <= end) {
+    if (d.getDay() !== 0) count++;
+    d.setDate(d.getDate() + 1);
+  }
+  return count;
+}
+
 export async function getEmployeeTotalAllocatedWH(
   employeeId: string,
   weekId: string,
