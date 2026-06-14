@@ -117,6 +117,7 @@ export interface EmployeeUtilization {
   utilization: number;
   statusLabel: string;
   color: string;
+  projects: string[];
 }
 
 export interface ProjectWiseReport {
@@ -131,6 +132,7 @@ export interface ProjectWiseReport {
 export interface LeadSummary {
   projectLead: string;
   projectCount: number;
+  projectNames: string[];
   employeeCount: number;
   totalCapacity: number;
   allocatedWH: number;

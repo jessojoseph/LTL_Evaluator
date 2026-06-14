@@ -111,7 +111,10 @@ export async function employeeUtilization(req: Request, res: Response): Promise<
     }
 
     const employees = await Employee.find({ status: 'active' }).populate('defaultLeadId', 'name');
-    const allocations = await Allocation.find({ weekId: week._id });
+    const allocations = (await Allocation.find({ weekId: week._id })
+      .populate('projectLeadId', 'name')
+      .populate('projectId', 'name')
+      .populate('employeeId', 'name')) as unknown as AllocationPopulated[];
 
     const employeeMap = new Map<
       string,
@@ -125,12 +128,13 @@ export async function employeeUtilization(req: Request, res: Response): Promise<
         utilization: number;
         statusLabel: string;
         color: string;
+        projects: string[];
       }
     >();
 
     for (const emp of employees) {
       const empAllocations = allocations.filter(
-        (a) => a.employeeId.toString() === emp._id.toString()
+        (a) => a.employeeId._id.toString() === emp._id.toString()
       );
       const allocatedWH = empAllocations.reduce((sum, a) => sum + a.allocatedWH, 0);
       const capacityWH = week.weeklyCapacity;
@@ -146,6 +150,8 @@ export async function employeeUtilization(req: Request, res: Response): Promise<
         : { label: 'Overbooked', color: 'red' };
 
       const defaultLead = emp.defaultLeadId as PopulatedDoc | null;
+      const uniqueProjects = [...new Set(empAllocations.map((a) => a.projectId.name || ''))].filter(Boolean);
+
       employeeMap.set(emp._id.toString(), {
         employee: emp.name,
         lead: defaultLead?.name || '-',
@@ -156,6 +162,7 @@ export async function employeeUtilization(req: Request, res: Response): Promise<
         utilization: Math.round(utilization * 100) / 100,
         statusLabel,
         color,
+        projects: uniqueProjects,
       });
     }
 
@@ -243,14 +250,22 @@ export async function leadSummary(req: Request, res: Response): Promise<void> {
         (a) => a.projectLeadId._id.toString() === lead._id.toString()
       );
 
-      const uniqueProjects = new Set(leadAllocations.map((a) => a.projectId.name));
+      const uniqueProjects = new Map<string, string>();
       const uniqueEmployees = new Set(leadAllocations.map((a) => a.employeeId.name));
       const totalAllocatedWH = leadAllocations.reduce((sum, a) => sum + a.allocatedWH, 0);
       const totalCapacity = uniqueEmployees.size * week.weeklyCapacity;
 
+      for (const a of leadAllocations) {
+        const pid = a.projectId._id.toString();
+        if (!uniqueProjects.has(pid)) {
+          uniqueProjects.set(pid, a.projectId.name || '');
+        }
+      }
+
       return {
         projectLead: lead.name,
         projectCount: uniqueProjects.size,
+        projectNames: Array.from(uniqueProjects.values()),
         employeeCount: uniqueEmployees.size,
         totalCapacity,
         allocatedWH: totalAllocatedWH,

@@ -19,6 +19,9 @@ export default function Allocations() {
   const [selectedYear, setSelectedYear] = useState('');
   const [selectedMonth, setSelectedMonth] = useState('');
   const [selectedWeek, setSelectedWeek] = useState('');
+  const [filterLead, setFilterLead] = useState('');
+  const [filterProject, setFilterProject] = useState('');
+  const [filterEmployee, setFilterEmployee] = useState('');
   const [showModal, setShowModal] = useState(false);
   const [editing, setEditing] = useState<Allocation | null>(null);
   const [warning, setWarning] = useState('');
@@ -76,14 +79,18 @@ export default function Allocations() {
   useEffect(() => {
     if (selectedWeek) {
       setTableLoading(true);
-      allocationApi.getAll({ weekId: selectedWeek }).then(({ data }) => {
+      const params: Record<string, string> = { weekId: selectedWeek };
+      if (filterLead) params.projectLeadId = filterLead;
+      if (filterProject) params.projectId = filterProject;
+      if (filterEmployee) params.employeeId = filterEmployee;
+      allocationApi.getAll(params).then(({ data }) => {
         setAllocations(data.allocations);
         setTableLoading(false);
       });
     } else {
       setAllocations([]);
     }
-  }, [selectedWeek]);
+  }, [selectedWeek, filterLead, filterProject, filterEmployee]);
 
   const {
     paginatedData,
@@ -143,6 +150,7 @@ export default function Allocations() {
   };
 
   const filteredProjects = projects.filter((p) => !form.projectLeadId || p.projectLeadId._id === form.projectLeadId);
+  const filteredProjectOptions = projects.filter((p) => !filterLead || p.projectLeadId._id === filterLead);
   const week = weeks.find((w) => w._id === selectedWeek);
 
   return (
@@ -179,11 +187,43 @@ export default function Allocations() {
               })}
             </select>
           </div>
-          {hasPermission('allocations:create') && selectedWeek && (
-            <button onClick={openCreate} className="btn-primary"><Plus className="w-4 h-4" /> Add Allocation</button>
-          )}
         </div>
       </div>
+
+      {/* Filter row */}
+      {selectedWeek && (
+        <div className="card p-3">
+          <div className="flex items-center justify-between flex-wrap gap-3">
+            <div className="flex items-center gap-3 flex-wrap">
+              <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Filters</span>
+              <select className="input w-auto text-sm" value={filterLead}
+                onChange={(e) => setFilterLead(e.target.value)}>
+                <option value="">All Leads</option>
+                {leads.map((l) => <option key={l._id} value={l._id}>{l.name}</option>)}
+              </select>
+              <select className="input w-auto text-sm" value={filterProject}
+                onChange={(e) => setFilterProject(e.target.value)}>
+                <option value="">All Projects</option>
+                {filteredProjectOptions.map((p) => <option key={p._id} value={p._id}>{p.name}</option>)}
+              </select>
+              <select className="input w-auto text-sm" value={filterEmployee}
+                onChange={(e) => setFilterEmployee(e.target.value)}>
+                <option value="">All Employees</option>
+                {employees.map((emp) => <option key={emp._id} value={emp._id}>{emp.name}</option>)}
+              </select>
+              {(filterLead || filterProject || filterEmployee) && (
+                <button onClick={() => { setFilterLead(''); setFilterProject(''); setFilterEmployee(''); }}
+                  className="text-xs text-primary-600 hover:text-primary-800 font-medium transition-colors">
+                  Clear filters
+                </button>
+              )}
+            </div>
+            {hasPermission('allocations:create') && (
+              <button onClick={openCreate} className="btn-primary"><Plus className="w-4 h-4" /> Add Allocation</button>
+            )}
+          </div>
+        </div>
+      )}
 
       {warning && (
         <div className="flex items-center gap-2 bg-yellow-50 border border-yellow-200 text-yellow-800 text-sm rounded-xl px-4 py-3 animate-slide-down">

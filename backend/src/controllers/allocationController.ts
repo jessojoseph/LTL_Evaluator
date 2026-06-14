@@ -119,10 +119,10 @@ export async function update(req: Request, res: Response): Promise<void> {
       return;
     }
 
-    const week = await Week.findById(allocation.weekId);
+    const week = await Week.findById(allocation.weekId._id);
     const totalAllocated = await getEmployeeTotalAllocatedWH(
-      allocation.employeeId.toString(),
-      allocation.weekId.toString(),
+      allocation.employeeId._id.toString(),
+      allocation.weekId._id.toString(),
       allocation._id.toString()
     );
     const isOverbooked = week && totalAllocated > week.weeklyCapacity;

@@ -701,7 +701,20 @@ function LeadSummaryTable({ data }: { data: LeadSummary[] }) {
         {data.map((r, i) => (
           <tr key={i}>
             <td className="font-semibold text-gray-900">{r.projectLead}</td>
-            <td className="text-center text-gray-600">{r.projectCount}</td>
+            <td className="text-center">
+              <span className="inline-flex items-center justify-center min-w-[2rem] h-6 bg-primary-50 text-primary-700 text-xs font-bold rounded-full px-2">
+                {r.projectCount}
+              </span>
+              {r.projectNames.length > 0 && (
+                <div className="mt-1 space-y-0.5">
+                  {r.projectNames.map((name, j) => (
+                    <p key={j} className="text-[11px] text-gray-500 leading-tight truncate max-w-[200px]" title={name}>
+                      {name}
+                    </p>
+                  ))}
+                </div>
+              )}
+            </td>
             <td className="text-center text-gray-600">{r.employeeCount}</td>
             <td className="text-center text-gray-600">{r.totalCapacity}</td>
             <td className="text-center text-gray-600">{r.allocatedWH}</td>

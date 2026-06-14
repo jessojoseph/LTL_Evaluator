@@ -272,7 +272,7 @@ export default function Dashboard() {
                   </div>
                 </div>
 
-                <div className="flex flex-col gap-2.5 justify-center min-w-[150px] w-full sm:w-auto">
+                <div className="flex flex-col gap-2.5 justify-start min-w-[150px] w-full sm:w-auto max-h-[200px] overflow-y-auto pr-2 custom-scrollbar">
                   {projectData.map((entry, index) => {
                     const total = projectData.reduce((sum, item) => sum + item.wh, 0);
                     const percent = total > 0 ? Math.round((entry.wh / total) * 100) : 0;
@@ -351,6 +351,7 @@ export default function Dashboard() {
                 <tr className="border-b border-gray-50 bg-gray-50/50 text-gray-400 font-bold uppercase tracking-wider">
                   <th className="px-4 py-3">Employee</th>
                   <th className="px-4 py-3">Primary Lead</th>
+                  <th className="px-4 py-3">Projects</th>
                   <th className="px-4 py-3 text-center">Capacity</th>
                   <th className="px-4 py-3 text-center">Allocated</th>
                   <th className="px-4 py-3 text-center">Free</th>
@@ -359,10 +360,23 @@ export default function Dashboard() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-50 text-gray-700 font-medium">
-                {utilizationData.slice(0, 8).map((row, i) => (
+                {utilizationData.map((row, i) => (
                   <tr key={i} className="hover:bg-gray-50/50 transition-colors">
                     <td className="px-4 py-3.5 font-bold text-gray-900">{row.employee}</td>
                     <td className="px-4 py-3.5 text-gray-400">{row.lead}</td>
+                    <td className="px-4 py-3.5">
+                      {row.projects.length > 0 ? (
+                        <div className="flex flex-wrap gap-1 max-w-[240px]">
+                          {row.projects.map((p, j) => (
+                            <span key={j} className="text-[10px] bg-primary-50 text-primary-700 font-semibold px-1.5 py-0.5 rounded-md truncate max-w-[120px]" title={p}>
+                              {p}
+                            </span>
+                          ))}
+                        </div>
+                      ) : (
+                        <span className="text-gray-300">—</span>
+                      )}
+                    </td>
                     <td className="px-4 py-3.5 text-center">{row.capacityWH} WH</td>
                     <td className="px-4 py-3.5 text-center text-primary-700 font-semibold">{row.allocatedWH} WH</td>
                     <td className="px-4 py-3.5 text-center font-semibold">{row.freeWH} WH</td>
@@ -381,7 +395,7 @@ export default function Dashboard() {
                 ))}
                 {utilizationData.length === 0 && (
                   <tr>
-                    <td colSpan={7} className="text-center py-8 text-gray-400">No utilization data available</td>
+                    <td colSpan={8} className="text-center py-8 text-gray-400">No utilization data available</td>
                   </tr>
                 )}
               </tbody>
