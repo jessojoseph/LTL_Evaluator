@@ -3,7 +3,7 @@ import { NavLink, Outlet, useNavigate, useLocation } from 'react-router-dom';
 import {
   LayoutDashboard, Users, FolderKanban, Calendar,
   FileSpreadsheet, BarChart3, Shield, Key, UserCog, LogOut, Menu, X,
-  Bell, CalendarCheck, Scale, ChevronDown,
+  Bell, CalendarCheck, Scale, ChevronDown, CalendarDays,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import BrandLogo from './BrandLogo';
@@ -15,17 +15,21 @@ const navItems = [
   { to: '/projects', label: 'Projects', icon: FolderKanban, permissions: ['projects:read'] },
   { to: '/weeks', label: 'Weeks', icon: Calendar, permissions: ['weeks:read'] },
   { to: '/leaves', label: 'Leaves', icon: CalendarCheck, permissions: ['leaves:read', 'leaves:self'] },
-  { to: '/leave-rules', label: 'Leave Rules', icon: Scale, permissions: ['leave_rules:read'] },
   { to: '/allocations', label: 'Allocations', icon: FileSpreadsheet, permissions: ['allocations:read'] },
   { to: '/users', label: 'Users', icon: UserCog, permissions: ['users:read'] },
-  { to: '/roles', label: 'Roles', icon: Shield, permissions: ['roles:read'] },
   { to: '/reports', label: 'Reports', icon: BarChart3, permissions: ['reports:read', 'reports:payroll'] },
-  { to: '/permissions', label: 'Permissions', icon: Key, permissions: ['permissions:read'] },
 ];
 
 const reportSubItems = [
-  { to: '/reports', label: 'Allocation Reports', icon: BarChart3, permissions: ['reports:read'] },
-  { to: '/reports/payroll', label: 'Leave Reports', icon: BarChart3, permissions: ['reports:payroll'] },
+  { to: '/reports', label: 'Allocation Reports', permissions: ['reports:read'] },
+  { to: '/reports/payroll', label: 'Leave Reports', permissions: ['reports:payroll'] },
+];
+
+const masterSetupItems = [
+  { to: '/holidays', label: 'Holidays', permissions: ['holidays:read'] },
+  { to: '/leave-rules', label: 'Leave Rules', permissions: ['leave_rules:read'] },
+  { to: '/roles', label: 'Roles', permissions: ['roles:read'] },
+  { to: '/permissions', label: 'Permissions', permissions: ['permissions:read'] },
 ];
 
 const getGreeting = () => {
@@ -49,6 +53,8 @@ export default function Layout() {
   const visibleItems = navItems.filter((item) => hasAnyPermission(...item.permissions));
   const visibleReportSubItems = reportSubItems.filter((item) => hasAnyPermission(...item.permissions));
   const hasVisibleReports = visibleReportSubItems.length > 0;
+  const visibleMasterItems = masterSetupItems.filter((item) => hasAnyPermission(...item.permissions));
+  const hasVisibleMasterSetups = visibleMasterItems.length > 0;
 
   const isDashboard = location.pathname === '/dashboard' || location.pathname === '/';
 
@@ -56,10 +62,18 @@ export default function Layout() {
   const isOnReports = location.pathname.startsWith('/reports');
   const [reportsExpanded, setReportsExpanded] = useState(isOnReports);
 
-  // Auto-expand when navigating to reports
+  // Master Setups expand state
+  const isOnMasterSetup = ['/holidays', '/leave-rules', '/roles', '/permissions'].some(p => location.pathname.startsWith(p));
+  const [masterExpanded, setMasterExpanded] = useState(isOnMasterSetup);
+
+  // Auto-expand
   useEffect(() => {
     if (isOnReports) setReportsExpanded(true);
   }, [isOnReports]);
+
+  useEffect(() => {
+    if (isOnMasterSetup) setMasterExpanded(true);
+  }, [isOnMasterSetup]);
 
   return (
     <div className="min-h-screen bg-gray-50/50 flex">
@@ -137,6 +151,35 @@ export default function Layout() {
               </NavLink>
             );
           })}
+
+          {/* Master Setups Section */}
+          {hasVisibleMasterSetups && (
+            <div className="pt-4">
+              <div className="px-4 pb-1">
+                <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-widest">Master Setups</p>
+              </div>
+              {visibleMasterItems.map((item) => (
+                <NavLink
+                  key={item.to}
+                  to={item.to}
+                  onClick={() => setSidebarOpen(false)}
+                  className={({ isActive }) =>
+                    `flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200 ${
+                      isActive
+                        ? 'bg-primary-50 text-primary-700 shadow-sm font-semibold'
+                        : 'text-gray-500 hover:bg-gray-50 hover:text-gray-900'
+                    }`
+                  }
+                >
+                  {item.to === '/holidays' && <CalendarDays className="w-[18px] h-[18px]" />}
+                  {item.to === '/leave-rules' && <Scale className="w-[18px] h-[18px]" />}
+                  {item.to === '/roles' && <Shield className="w-[18px] h-[18px]" />}
+                  {item.to === '/permissions' && <Key className="w-[18px] h-[18px]" />}
+                  {item.label}
+                </NavLink>
+              ))}
+            </div>
+          )}
         </nav>
 
         {/* Bottom Callout Card */}
@@ -188,7 +231,12 @@ export default function Layout() {
                 <h1 className="text-xl font-extrabold text-gray-900 tracking-tight">
                   {location.pathname.startsWith('/reports')
                     ? 'Reports'
-                    : navItems.find(item => item.to === location.pathname)?.label || 'Resource Planning'}
+                    : navItems.find(item => item.to === location.pathname)?.label
+                    || (location.pathname === '/holidays' ? 'Holidays'
+                      : location.pathname === '/leave-rules' ? 'Leave Rules'
+                      : location.pathname === '/roles' ? 'Roles'
+                      : location.pathname === '/permissions' ? 'Permissions'
+                      : 'Resource Planning')}
                 </h1>
               </div>
             )}

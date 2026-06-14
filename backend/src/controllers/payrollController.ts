@@ -6,6 +6,23 @@ import {
   countLeaveDaysInMonth,
 } from '../utils/helpers';
 
+interface ReportRow {
+  employeeId: string;
+  employeeName: string;
+  employeeCode: string;
+  email: string;
+  department: string;
+  designation: string;
+  employmentType: string;
+  workingDays: number;
+  leaveDays: number;
+  lopDays: number;
+  presentDays: number;
+  netPayableDays: number;
+  leaveTypeBreakdown: Record<string, { days: number; lopDays: number }>;
+  leaveRecords: Record<string, unknown>[];
+}
+
 export async function monthlyLeaveSummary(req: Request, res: Response): Promise<void> {
   try {
     const year = parseInt(req.query.year as string) || new Date().getFullYear();
@@ -14,7 +31,7 @@ export async function monthlyLeaveSummary(req: Request, res: Response): Promise<
     const monthStart = new Date(year, month, 1);
     const monthEnd = new Date(year, month + 1, 0, 23, 59, 59);
 
-    const totalWorkingDays = getWorkingDaysInMonth(year, month);
+    const totalWorkingDays = await getWorkingDaysInMonth(year, month);
 
     // Get all active employees
     const employees = await Employee.find({ status: 'active' }).sort({ name: 1 });
@@ -38,17 +55,17 @@ export async function monthlyLeaveSummary(req: Request, res: Response): Promise<
       employeeLeaveMap.get(empId)!.push(leave);
     }
 
-    // Build report
-    const report = employees.map((emp) => {
+    // Build report — use for...of to allow async calls
+    const report: ReportRow[] = [];
+    for (const emp of employees) {
       const empLeaves = employeeLeaveMap.get(emp._id.toString()) || [];
 
-      // Break down by leave type
       const leaveTypeBreakdown: Record<string, { days: number; lopDays: number }> = {};
       let totalLeaveDays = 0;
       let totalLopDays = 0;
 
       for (const leave of empLeaves) {
-        const overlapDays = countLeaveDaysInMonth(
+        const overlapDays = await countLeaveDaysInMonth(
           new Date(leave.startDate),
           new Date(leave.endDate),
           monthStart,
@@ -73,8 +90,29 @@ export async function monthlyLeaveSummary(req: Request, res: Response): Promise<
       const netPayableDays = totalWorkingDays - totalLopDays;
       const presentDays = totalWorkingDays - totalLeaveDays;
 
-      return {
-        employeeId: emp._id,
+      // Build leave records
+      const leaveRecords: Record<string, unknown>[] = [];
+      for (const l of empLeaves) {
+        const days = await countLeaveDaysInMonth(
+          new Date(l.startDate),
+          new Date(l.endDate),
+          monthStart,
+          monthEnd
+        );
+        if (days === 0) continue;
+        leaveRecords.push({
+          type: l.type,
+          startDate: l.startDate,
+          endDate: l.endDate,
+          status: l.status,
+          isLop: l.isLop,
+          lopReason: l.lopReason,
+          days,
+        });
+      }
+
+      report.push({
+        employeeId: emp._id.toString(),
         employeeName: emp.name,
         employeeCode: emp.employeeCode || '-',
         email: emp.email,
@@ -87,22 +125,9 @@ export async function monthlyLeaveSummary(req: Request, res: Response): Promise<
         presentDays,
         netPayableDays,
         leaveTypeBreakdown,
-        leaveRecords: empLeaves.map((l) => ({
-          type: l.type,
-          startDate: l.startDate,
-          endDate: l.endDate,
-          status: l.status,
-          isLop: l.isLop,
-          lopReason: l.lopReason,
-          days: countLeaveDaysInMonth(
-            new Date(l.startDate),
-            new Date(l.endDate),
-            monthStart,
-            monthEnd
-          ),
-        })).filter((r) => r.days > 0),
-      };
-    });
+        leaveRecords,
+      });
+    }
 
     // Summary stats
     const summary = {

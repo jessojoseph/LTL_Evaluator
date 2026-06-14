@@ -15,6 +15,7 @@ import userRoutes from './routes/users';
 import leaveRoutes from './routes/leaves';
 import leaveRuleRoutes from './routes/leaveRules';
 import payrollRoutes from './routes/payroll';
+import holidayRoutes from './routes/holidays';
 
 const app = express();
 
@@ -42,6 +43,7 @@ app.use('/api/users', userRoutes);
 app.use('/api/leaves', leaveRoutes);
 app.use('/api/leave-rules', leaveRuleRoutes);
 app.use('/api/payroll', payrollRoutes);
+app.use('/api/holidays', holidayRoutes);
 
 // 404 handler
 app.use((_req, res) => {

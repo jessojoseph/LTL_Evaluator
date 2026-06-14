@@ -304,7 +304,7 @@ export async function exportMonthlyPayroll(req: Request, res: Response): Promise
 
     const monthStart = new Date(year, month, 1);
     const monthEnd = new Date(year, month + 1, 0, 23, 59, 59);
-    const totalWorkingDays = getWorkingDaysInMonth(year, month);
+    const totalWorkingDays = await getWorkingDaysInMonth(year, month);
 
     const employees = await Employee.find({ status: 'active' }).sort({ name: 1 });
 
@@ -333,7 +333,7 @@ export async function exportMonthlyPayroll(req: Request, res: Response): Promise
       let totalLopDays = 0;
 
       for (const l of empLeaves) {
-        const overlapDays = countLeaveDaysInMonth(
+        const overlapDays = await countLeaveDaysInMonth(
           new Date(l.startDate), new Date(l.endDate), monthStart, monthEnd
         );
         if (overlapDays === 0) continue;

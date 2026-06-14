@@ -13,6 +13,7 @@ export const defaultRoles = [
       'leaves:create', 'leaves:read', 'leaves:update', 'leaves:delete', 'leaves:approve',
       'leave_rules:create', 'leave_rules:read', 'leave_rules:update', 'leave_rules:delete',
       'roles:create', 'roles:read', 'roles:update', 'roles:delete',
+      'holidays:create', 'holidays:read', 'holidays:update', 'holidays:delete',
       'permissions:create', 'permissions:read', 'permissions:update', 'permissions:delete',
     ],
   },

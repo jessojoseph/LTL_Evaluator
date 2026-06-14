@@ -57,6 +57,12 @@ export const defaultPermissions = [
   { name: 'leave_rules:update', label: 'Update Leave Rules', description: 'Edit leave allocation rules', module: 'Leave Rules', isSystem: true },
   { name: 'leave_rules:delete', label: 'Delete Leave Rules', description: 'Delete leave allocation rules', module: 'Leave Rules', isSystem: true },
 
+  // Holidays
+  { name: 'holidays:create', label: 'Create Holidays', description: 'Create new holidays', module: 'Holidays', isSystem: true },
+  { name: 'holidays:read', label: 'Read Holidays', description: 'View holidays', module: 'Holidays', isSystem: true },
+  { name: 'holidays:update', label: 'Update Holidays', description: 'Edit holidays', module: 'Holidays', isSystem: true },
+  { name: 'holidays:delete', label: 'Delete Holidays', description: 'Delete holidays', module: 'Holidays', isSystem: true },
+
   // Payroll
   { name: 'reports:payroll', label: 'Monthly Payroll Reports', description: 'View monthly leave summary for payroll calculation', module: 'Payroll', isSystem: true },
 

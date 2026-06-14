@@ -158,6 +158,15 @@ export const leaveApi = {
   getBalance: () => api.get('/leaves/balance'),
 };
 
+// Holidays
+export const holidayApi = {
+  getAll: (params?: Record<string, string>) => api.get('/holidays', { params }),
+  getById: (id: string) => api.get(`/holidays/${id}`),
+  create: (data: Record<string, unknown>) => api.post('/holidays', data),
+  update: (id: string, data: Record<string, unknown>) => api.put(`/holidays/${id}`, data),
+  remove: (id: string) => api.delete(`/holidays/${id}`),
+};
+
 // Payroll
 export const payrollApi = {
   monthlySummary: (params?: Record<string, string>) =>
