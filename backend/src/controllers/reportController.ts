@@ -64,7 +64,13 @@ export async function dashboard(req: Request, res: Response): Promise<void> {
     // Project-wise allocation
     const projectWiseAllocation = await Allocation.aggregate([
       { $match: { weekId: week._id } },
-      { $group: { _id: '$projectId', totalWH: { $sum: '$allocatedWH' } } },
+      {
+        $group: {
+          _id: '$projectId',
+          totalWH: { $sum: '$allocatedWH' },
+          resourceCount: { $addToSet: '$employeeId' }
+        }
+      },
       {
         $lookup: {
           from: 'projects',
@@ -74,7 +80,89 @@ export async function dashboard(req: Request, res: Response): Promise<void> {
         },
       },
       { $unwind: { path: '$project', preserveNullAndEmptyArrays: true } },
-      { $project: { projectName: '$project.name', totalWH: 1 } },
+      {
+        $project: {
+          projectName: '$project.name',
+          projectStatus: { $ifNull: ['$project.status', 'active'] },
+          projectPriority: { $ifNull: ['$project.priority', 'medium'] },
+          totalWH: 1,
+          resourceCount: { $size: '$resourceCount' }
+        }
+      },
+    ]);
+
+    // Lead-Project matrix allocation
+    const leadProjectAllocation = await Allocation.aggregate([
+      { $match: { weekId: week._id } },
+      {
+        $group: {
+          _id: { leadId: '$projectLeadId', projectId: '$projectId' },
+          totalWH: { $sum: '$allocatedWH' }
+        }
+      },
+      {
+        $lookup: {
+          from: 'employees',
+          localField: '_id.leadId',
+          foreignField: '_id',
+          as: 'lead',
+        },
+      },
+      { $unwind: { path: '$lead', preserveNullAndEmptyArrays: true } },
+      {
+        $lookup: {
+          from: 'projects',
+          localField: '_id.projectId',
+          foreignField: '_id',
+          as: 'project',
+        },
+      },
+      { $unwind: { path: '$project', preserveNullAndEmptyArrays: true } },
+      {
+        $project: {
+          _id: 0,
+          leadName: { $ifNull: ['$lead.name', 'Unknown'] },
+          projectName: { $ifNull: ['$project.name', 'Unknown'] },
+          totalWH: 1
+        }
+      }
+    ]);
+
+    // Project-Employee allocation
+    const projectEmployeeAllocation = await Allocation.aggregate([
+      { $match: { weekId: week._id } },
+      {
+        $group: {
+          _id: { projectId: '$projectId', employeeId: '$employeeId' },
+          totalWH: { $sum: '$allocatedWH' }
+        }
+      },
+      {
+        $lookup: {
+          from: 'projects',
+          localField: '_id.projectId',
+          foreignField: '_id',
+          as: 'project',
+        },
+      },
+      { $unwind: { path: '$project', preserveNullAndEmptyArrays: true } },
+      {
+        $lookup: {
+          from: 'employees',
+          localField: '_id.employeeId',
+          foreignField: '_id',
+          as: 'employee',
+        },
+      },
+      { $unwind: { path: '$employee', preserveNullAndEmptyArrays: true } },
+      {
+        $project: {
+          _id: 0,
+          projectName: { $ifNull: ['$project.name', 'Unknown'] },
+          employeeName: { $ifNull: ['$employee.name', 'Unknown'] },
+          totalWH: 1
+        }
+      }
     ]);
 
     res.json({
@@ -88,6 +176,8 @@ export async function dashboard(req: Request, res: Response): Promise<void> {
       averageUtilization: Math.round(averageUtilization * 100) / 100,
       leadWiseAllocation,
       projectWiseAllocation,
+      leadProjectAllocation,
+      projectEmployeeAllocation,
     });
   } catch (error) {
     res.status(500).json({ message: 'Server error' });

@@ -104,7 +104,16 @@ export interface DashboardData {
   totalOverbookedWH: number;
   averageUtilization: number;
   leadWiseAllocation: { _id: string; leadName: string; totalWH: number }[];
-  projectWiseAllocation: { _id: string; projectName: string; totalWH: number }[];
+  projectWiseAllocation: {
+    _id: string;
+    projectName: string;
+    totalWH: number;
+    resourceCount?: number;
+    projectStatus?: string;
+    projectPriority?: string;
+  }[];
+  leadProjectAllocation?: { leadName: string; projectName: string; totalWH: number }[];
+  projectEmployeeAllocation?: { projectName: string; employeeName: string; totalWH: number }[];
 }
 
 export interface EmployeeUtilization {
