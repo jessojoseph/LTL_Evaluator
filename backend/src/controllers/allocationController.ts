@@ -39,6 +39,7 @@ export async function getById(req: Request, res: Response): Promise<void> {
     }
     res.json({ allocation });
   } catch (error) {
+    console.error('Error in getAll:', error);
     res.status(500).json({ message: 'Server error' });
   }
 }
@@ -77,6 +78,7 @@ export async function create(req: Request, res: Response): Promise<void> {
         : undefined,
     });
   } catch (error) {
+    console.error('Error in create:', error);
     res.status(500).json({ message: 'Server error' });
   }
 }
@@ -134,6 +136,7 @@ export async function update(req: Request, res: Response): Promise<void> {
         : undefined,
     });
   } catch (error) {
+    console.error('Error in update:', error);
     res.status(500).json({ message: 'Server error' });
   }
 }
