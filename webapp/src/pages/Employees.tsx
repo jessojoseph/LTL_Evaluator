@@ -12,6 +12,7 @@ const EMPLOYMENT_TYPES = [
   { value: 'part_time', label: 'Part Time' },
   { value: 'contract', label: 'Contract' },
   { value: 'intern', label: 'Intern' },
+  { value: 'probation', label: 'Probation' },
 ] as const;
 
 const RESIGNATION_REASONS = [
