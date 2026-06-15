@@ -81,6 +81,13 @@ export async function create(req: Request, res: Response): Promise<void> {
 
 export async function update(req: Request, res: Response): Promise<void> {
   try {
+    const oldEmployee = await Employee.findById(req.params.id);
+    if (!oldEmployee) {
+      res.status(404).json({ message: 'Employee not found' });
+      return;
+    }
+    const oldEmail = oldEmployee.email;
+
     const employee = await Employee.findByIdAndUpdate(req.params.id, req.body, {
       new: true,
       runValidators: true,
@@ -92,9 +99,10 @@ export async function update(req: Request, res: Response): Promise<void> {
     }
 
     // Sync corresponding User if exists
-    const user = await User.findOne({ email: employee.email.toLowerCase() });
+    const user = await User.findOne({ email: oldEmail.toLowerCase() });
     if (user) {
       user.name = employee.name;
+      user.email = employee.email.toLowerCase();
       user.status = employee.status === 'active' ? 'active' : 'inactive';
 
       const roleName = employee.isLead ? 'Project Lead' : 'Employee';
