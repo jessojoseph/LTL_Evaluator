@@ -357,6 +357,7 @@ export async function leadSummary(req: Request, res: Response): Promise<void> {
         projectCount: uniqueProjects.size,
         projectNames: Array.from(uniqueProjects.values()),
         employeeCount: uniqueEmployees.size,
+        employeeNames: Array.from(uniqueEmployees),
         totalCapacity,
         allocatedWH: totalAllocatedWH,
         freeWH: calculateFreeWH(totalCapacity, totalAllocatedWH),

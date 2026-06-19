@@ -143,6 +143,7 @@ export interface LeadSummary {
   projectCount: number;
   projectNames: string[];
   employeeCount: number;
+  employeeNames: string[];
   totalCapacity: number;
   allocatedWH: number;
   freeWH: number;
