@@ -395,6 +395,7 @@ export default function Allocations() {
           onRefresh={() => fetchAllocations(getFilterParams())}
           onEdit={openEdit}
           onWarning={setWarning}
+          onShowConfirm={(message, onConfirm) => setConfirmModal({ message, onConfirm })}
         />
       ) : null}
 
@@ -415,7 +416,7 @@ export default function Allocations() {
 
       {/* Confirmation Modal */}
       {confirmModal && (
-        <div className="modal-overlay z-[60]" onClick={() => setConfirmModal(null)}>
+        <div className="modal-overlay z-[80]" onClick={() => setConfirmModal(null)}>
           <div className="modal-content" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-2">
@@ -511,6 +512,7 @@ interface KanbanBoardProps {
   onRefresh: () => void;
   onEdit: (a: Allocation) => void;
   onWarning: (msg: string) => void;
+  onShowConfirm: (message: string, onConfirm: () => void) => void;
 }
 
 function KanbanBoard({
@@ -524,6 +526,7 @@ function KanbanBoard({
   onRefresh,
   onEdit,
   onWarning,
+  onShowConfirm,
 }: KanbanBoardProps) {
   const [activeId, setActiveId] = useState<string | null>(null);
   const [activeCard, setActiveCard] = useState<{ name: string; color: string } | null>(null);
@@ -552,9 +555,8 @@ function KanbanBoard({
     };
   });
 
-  // Employees with zero allocations this week
-  const allocatedEmpIds = new Set(allocations.map((a) => a.employeeId._id));
-  const unallocatedEmployees = employees.filter((e) => !allocatedEmpIds.has(e._id));
+  // All employees (show everyone in the pool so they can be dragged to projects)
+  const poolEmployees = employees;
 
   const handleDragStart = useCallback((event: DragStartEvent) => {
     const data = event.active.data.current as Record<string, unknown> | undefined;
@@ -653,17 +655,17 @@ function KanbanBoard({
         className="flex gap-4 overflow-x-auto pb-4 -mx-6 px-6"
         style={{ minHeight: 420 }}
       >
-        {/* Unallocated column — sticky, doesn't scroll */}
+        {/* Employee pool column — sticky, doesn't scroll */}
         <div className="sticky left-0 z-10 pr-4 -mr-4 bg-gray-50">
           <BoardColumn
             id="col-unallocated"
-            title="Unallocated Pool"
-            subtitle={`${unallocatedEmployees.length} employee${unallocatedEmployees.length !== 1 ? 's' : ''} available`}
+            title="All Employees"
+            subtitle={`${poolEmployees.length} employee${poolEmployees.length !== 1 ? 's' : ''}`}
             totalAllocatedWH={0}
-            capacity={week.weeklyCapacity * unallocatedEmployees.length}
-            count={unallocatedEmployees.length}
+            capacity={0}
+            count={poolEmployees.length}
           >
-            {unallocatedEmployees.map((emp) => (
+            {poolEmployees.map((emp) => (
               <BoardCard
                 key={emp._id}
                 id={`unalloc-${emp._id}`}
@@ -673,8 +675,8 @@ function KanbanBoard({
                 isDragging={activeId === `unalloc-${emp._id}`}
               />
             ))}
-            {unallocatedEmployees.length === 0 && (
-              <p className="text-xs text-gray-400 text-center py-6 italic">All employees allocated</p>
+            {poolEmployees.length === 0 && (
+              <p className="text-xs text-gray-400 text-center py-6 italic">No employees found</p>
             )}
           </BoardColumn>
         </div>
@@ -694,8 +696,7 @@ function KanbanBoard({
               totalAllocatedWH={col.totalAllocatedWH}
               capacity={capacity}
               count={col.allocations.length}
-            >
-              {col.allocations.map((alloc) => (
+            >                {col.allocations.map((alloc) => (
                 <BoardCard
                   key={alloc._id}
                   id={`alloc-${alloc._id}`}
@@ -704,6 +705,16 @@ function KanbanBoard({
                   sourceColumn={col.id}
                   isDragging={activeId === `alloc-${alloc._id}`}
                   onClick={() => onEdit(alloc)}
+                  onDelete={async () => {
+                    if (!window.confirm(`Remove ${alloc.employeeId.name} from ${alloc.projectId.name}?`)) return;
+                    try {
+                      await allocationApi.remove(alloc._id);
+                      onRefresh();
+                    } catch (err: unknown) {
+                      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message || 'Error deleting allocation';
+                      onWarning(msg);
+                    }
+                  }}
                 />
               ))}
             </BoardColumn>
@@ -796,9 +807,31 @@ function KanbanBoard({
                       );
                       const newWH = Number(quickDays) * week.hoursPerDay + Number(quickExtraHours);
                       const freeWH = Math.max(0, week.weeklyCapacity - totalOtherWH);
-                      if (!window.confirm(
-                        `This employee is already allocated to:\n\n${details}\n\nRemaining free hours: ${freeWH} WH\nNew allocation: ${newWH} WH\n\nProceed?`
-                      )) return;
+
+                      const proceedWithAllocation = async () => {
+                        try {
+                          const { data: res } = await allocationApi.create({
+                            weekId: selectedWeek,
+                            projectLeadId: quickAlloc.project.projectLeadId._id,
+                            projectId: quickAlloc.project._id,
+                            employeeId: quickAlloc.employee._id,
+                            allocatedDays: Number(quickDays),
+                            extraHours: Number(quickExtraHours),
+                          });
+                          if (res.warning) onWarning(res.warning);
+                          setQuickAlloc(null);
+                          onRefresh();
+                        } catch (err: unknown) {
+                          const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message || 'Error creating allocation';
+                          onWarning(msg);
+                        }
+                      };
+
+                      onShowConfirm(
+                        `This employee is already allocated to the following project(s) this week:\n\n${details}\n\nRemaining free hours: ${freeWH} WH\nNew allocation: ${newWH} WH\n\nDo you want to proceed with this allocation?`,
+                        proceedWithAllocation
+                      );
+                      return;
                     }
                   } catch {
                     // If check fails, just proceed
@@ -918,6 +951,7 @@ function BoardCard({
   sourceColumn,
   isDragging,
   onClick,
+  onDelete,
 }: {
   id: string;
   type: 'allocation' | 'unallocated';
@@ -926,6 +960,7 @@ function BoardCard({
   sourceColumn: string;
   isDragging: boolean;
   onClick?: () => void;
+  onDelete?: () => void;
 }) {
   const data = type === 'allocation'
     ? { type, allocation, sourceColumn }
@@ -972,6 +1007,13 @@ function BoardCard({
           <p className="text-sm font-semibold text-gray-900 truncate flex-1">
             {allocation.employeeId.name}
           </p>
+          <button
+            onPointerDown={(e) => { e.stopPropagation(); onDelete?.(); }}
+            className="p-1 rounded-lg text-gray-300 hover:text-red-600 hover:bg-red-50 transition-all opacity-0 group-hover:opacity-100 flex-shrink-0"
+            title="Remove allocation"
+          >
+            <Trash2 className="w-3.5 h-3.5" />
+          </button>
           <button
             onPointerDown={(e) => { e.stopPropagation(); onClick?.(); }}
             className="p-1 rounded-lg text-gray-300 hover:text-primary-600 hover:bg-primary-50 transition-all opacity-0 group-hover:opacity-100 flex-shrink-0"
