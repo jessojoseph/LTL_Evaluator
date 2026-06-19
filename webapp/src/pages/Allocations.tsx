@@ -26,6 +26,7 @@ export default function Allocations() {
   const [editing, setEditing] = useState<Allocation | null>(null);
   const [warning, setWarning] = useState('');
   const [form, setForm] = useState({ weekId: '', projectLeadId: '', projectId: '', employeeId: '', allocatedDays: '0', extraHours: '0', remarks: '' });
+  const [confirmModal, setConfirmModal] = useState<{ message: string; onConfirm: () => void } | null>(null);
   const [loading, setLoading] = useState(false);
   const [tableLoading, setTableLoading] = useState(false);
 
@@ -132,10 +133,7 @@ export default function Allocations() {
     setShowModal(true);
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setWarning('');
-    const data = { ...form, allocatedDays: Number(form.allocatedDays), extraHours: Number(form.extraHours) };
+  const saveAllocation = async (data: Record<string, unknown>) => {
     try {
       if (editing) {
         const { data: res } = await allocationApi.update(editing._id, data);
@@ -150,6 +148,50 @@ export default function Allocations() {
       const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message || 'Error saving allocation';
       setWarning(msg);
     }
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setWarning('');
+
+    const data = { ...form, allocatedDays: Number(form.allocatedDays), extraHours: Number(form.extraHours) };
+
+    // Check if employee already has other allocations in this week
+    try {
+      const { data: existingData } = await allocationApi.getAll({
+        weekId: form.weekId,
+        employeeId: form.employeeId,
+      });
+
+      const otherAllocations = (existingData.allocations || []).filter(
+        (a: Allocation) => !editing || a._id !== editing._id
+      );
+
+      if (otherAllocations.length > 0) {
+        const details = otherAllocations.map(
+          (a: Allocation) =>
+            `• ${a.projectId.name} (Manager: ${a.projectLeadId.name}) — ${a.allocatedWH} WH`
+        ).join('\n');
+
+        const totalOtherWH = otherAllocations.reduce(
+          (s: number, a: Allocation) => s + a.allocatedWH, 0
+        );
+        const freeWH = Math.max(0, (week?.weeklyCapacity || 40) - totalOtherWH);
+
+        setConfirmModal({
+          message: `This employee is already allocated to the following project(s) this week:\n\n${details}\n\nRemaining free hours: ${freeWH} WH\n\nDo you want to proceed with this allocation?`,
+          onConfirm: () => {
+            setConfirmModal(null);
+            saveAllocation(data);
+          },
+        });
+        return;
+      }
+    } catch {
+      // If the check fails, just proceed with the save
+    }
+
+    saveAllocation(data);
   };
 
   const toggleStatus = async (id: string) => {
@@ -336,7 +378,29 @@ export default function Allocations() {
         </div>
       )}
 
-      {/* Modal */}
+      {/* Confirmation Modal */}
+      {confirmModal && (
+        <div className="modal-overlay z-[60]" onClick={() => setConfirmModal(null)}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2">
+                <AlertTriangle className="w-5 h-5 text-amber-500" />
+                <h2 className="text-lg font-semibold text-gray-900">Existing Allocation Detected</h2>
+              </div>
+              <button onClick={() => setConfirmModal(null)} className="p-1.5 text-gray-400 hover:text-gray-600 rounded-lg hover:bg-gray-100 transition-colors">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <pre className="text-sm text-gray-700 whitespace-pre-wrap font-sans mb-6 leading-relaxed">{confirmModal.message}</pre>
+            <div className="flex justify-end gap-3 pt-2 border-t border-gray-100">
+              <button onClick={() => setConfirmModal(null)} className="btn-secondary">Cancel</button>
+              <button onClick={confirmModal.onConfirm} className="btn-primary">Proceed</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Allocation Form Modal */}
       {showModal && (
         <div className="modal-overlay" onClick={() => setShowModal(false)}>
           <div className="modal-content" onClick={(e) => e.stopPropagation()}>
