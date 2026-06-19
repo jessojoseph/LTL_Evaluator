@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { allocationApi, weekApi, employeeApi, projectApi } from '../api/client';
 import { useAuth } from '../context/AuthContext';
 import type { Allocation, Week, Employee, Project } from '../types';
-import { Plus, Pencil, AlertTriangle, X, Power, PowerOff, FileSpreadsheet } from 'lucide-react';
+import { Plus, Pencil, AlertTriangle, X, Power, PowerOff, FileSpreadsheet, Trash2 } from 'lucide-react';
 import { TableSkeleton } from '../components/Loader';
 import Pagination from '../components/Pagination';
 import { usePagination } from '../hooks/usePagination';
@@ -157,6 +157,17 @@ export default function Allocations() {
     fetchAllocations(getFilterParams());
   };
 
+  const handleDelete = async (id: string) => {
+    if (!window.confirm('Are you sure you want to delete this allocation?')) return;
+    try {
+      await allocationApi.remove(id);
+      fetchAllocations(getFilterParams());
+    } catch (err: unknown) {
+      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message || 'Error deleting allocation';
+      setWarning(msg);
+    }
+  };
+
   const filteredProjects = projects.filter((p) => !form.projectLeadId || p.projectLeadId._id === form.projectLeadId);
   const filteredProjectOptions = projects.filter((p) => !filterLead || p.projectLeadId._id === filterLead);
   const week = weeks.find((w) => w._id === selectedWeek);
@@ -280,6 +291,13 @@ export default function Allocations() {
                             }`}
                             title={a.status === 'active' ? 'Deactivate' : 'Activate'}>
                             {a.status === 'active' ? <PowerOff className="w-4 h-4" /> : <Power className="w-4 h-4" />}
+                          </button>
+                        )}
+                        {hasPermission('allocations:delete') && (
+                          <button onClick={() => handleDelete(a._id)}
+                            className="p-2 text-gray-400 hover:text-red-600 rounded-xl hover:bg-red-50 transition-all duration-200"
+                            title="Delete">
+                            <Trash2 className="w-4 h-4" />
                           </button>
                         )}
                       </div>

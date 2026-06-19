@@ -143,16 +143,12 @@ export async function update(req: Request, res: Response): Promise<void> {
 
 export async function remove(req: Request, res: Response): Promise<void> {
   try {
-    const allocation = await Allocation.findByIdAndUpdate(
-      req.params.id,
-      { status: 'inactive' },
-      { new: true }
-    );
+    const allocation = await Allocation.findByIdAndDelete(req.params.id);
     if (!allocation) {
       res.status(404).json({ message: 'Allocation not found' });
       return;
     }
-    res.json({ message: 'Allocation deactivated successfully', allocation });
+    res.json({ message: 'Allocation deleted successfully' });
   } catch (error) {
     res.status(500).json({ message: 'Server error' });
   }
